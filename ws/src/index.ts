@@ -12,7 +12,7 @@ type musicType = {
 type RateLimitingType = {
     ip: string,
     count: number,
-    time: Date 
+    time: number 
 };
 
 // PayPal payments and youtubeAPi part -> on the frontend -> the song returned by getSongs, addSongs -> use its ytUrl and send that to the ytApi 
@@ -56,40 +56,52 @@ async function makeNewRoom(admin: string): Promise<string> {
 async function joinRoom(roomCode: string, username: string): Promise<string> {
   const roomQuery = query(ROOMS, orderByChild("roomCode"), equalTo(roomCode));
   const snapshot = await get(roomQuery);
+  let userJoined = false;
 
   if (snapshot.exists()) {
     snapshot.forEach((childSnapshot) => {
       const roomRef = childSnapshot.ref;
       const currentRoom = childSnapshot.val().room;
       update(roomRef, { room: [...currentRoom, username] });
-      return `${username} joined the room.`;
-    });
+      userJoined = true;
+  });
+
+    if(userJoined) { 
+      return `${username} joined the room.`
+    } else {
+      return 'Failed to join the room.'
+    }      
   } else {
-    return "Could not join. Room not found.";
+    return "Could not join. Room not found."
   }
 }
 
 async function insertMusicIntoQueue(music: musicType, admin: string): Promise<string> {
   const room = query(ROOMS, orderByChild("admin"), equalTo(admin));
   const snapshot = await get(room);
+  let isMusicInQueue;
 
   if (snapshot.exists()) {
     snapshot.forEach((childSnapshot: DataSnapshot) => {
       const roomRef = childSnapshot.ref;
       const currentQueue = childSnapshot.val().queue || [];
       
-      const isMusicInQueue = currentQueue.some(
+      isMusicInQueue = currentQueue.some(
         (item: musicType) => item.youtubeUrl === music.youtubeUrl
       );
-      
+
       if (isMusicInQueue) {
-        return "Song already exists in the queue.";
+        return;
       } else {
         const updatedQueue = [music, ...currentQueue];
         update(roomRef, { queue: updatedQueue });
+       }
+    });
+      if (isMusicInQueue) {
+        return "Song already exists in the queue.";
+      } else {
         return "Music added successfully.";
       }
-    });
   } else {
     return "Room not found.";
   }
@@ -186,28 +198,31 @@ async function closeRoom(admin: string): Promise<string> {
   }
 }
 
-function rateLimitByIp(ip:string) {
+function rateLimitByIp(ip:string):boolean {
+    let toBeRateLimited:boolean = false;
     USERS.forEach((user) => {
         if(user.ip === ip) {
             const currentTime = Date.now();
             if(currentTime - user.time >= 600000) {
                 USERS.filter((user) => user.ip !== ip)
-                return false;
+                toBeRateLimited = false;
             }
             else {
                 if(user.count < 10) {
-                    return false;
+                    toBeRateLimited = false;
                 }
                 else {
                     user.count += 1;
-                    return true;
+                    toBeRateLimited = true;
                 }
             }
         }
         else {
             USERS.push({ ip:ip, count: 1, time: Date.now() });
+            toBeRateLimited = false;
         }
     })
+    return toBeRateLimited;
 }
 
 wss.on("connection", (socket, request) => {
@@ -215,59 +230,60 @@ wss.on("connection", (socket, request) => {
   
   socket.on("error", console.error);
 
-  const dontLetHimGo = rateLimitByIp(request.socket.remoteAddress);
+  const ip = request.socket.remoteAddress?.replace(/^::ffff:/, '') || "";
+  const dontLetHimGo:boolean = rateLimitByIp(ip);
 
-  if(){
+  if(dontLetHimGo){ 
     // user has the money then also let him go -> donot increase the counter -> they can send infinite request with money but no money increases the counter and all
-  }
   } else if(dontLetHimGo) {
     socket.send(JSON.stringify({ type:"rate-limited", message: "Honey! You have been rate limited. Please try again after a while." }))
   } else {
         socket.on("message", async (data) => {
             const message = JSON.parse(data.toString());
+            let admin, roomCode, username, response, url, music;
             switch(message.type) {
                 case "make-room": 
-                    const admin = message.username;
-                    const roomCode = await makeNewRoom(admin);
+                    admin = message.username;
+                    roomCode = await makeNewRoom(admin);
                     socket.send(JSON.stringify({ type:"make-room", message: "created-room", roomCode:roomCode }));
                     break;
                 case "join-room":
-                    const roomCode = message.roomCode;
-                    const username = message.username;
-                    const response = await joinRoom(roomCode, username);
+                    roomCode = message.roomCode;
+                    username = message.username;
+                    response = await joinRoom(roomCode, username);
                     socket.send(JSON.stringify({ type:"join-room", message: response }));
                     break;
                 case "add-music":
-                    const username = message.username;
-                    const music = message.music;
-                    const response = await insertMusicIntoQueue(music, username);
+                    username = message.username;
+                    music = message.music;
+                    response = await insertMusicIntoQueue(music, username);
                     socket.send(JSON.stringify({ type:"add-music", message: response, music: music }));
                     break;
                 case "delete-music":
-                    const music = message.music;
-                    const username = message.username;
-                    const response = await deleteMusicFromQueue(username, music);
+                    music = message.music;
+                    username = message.username;
+                    response = await deleteMusicFromQueue(username, music);
                     socket.send(JSON.stringify({ type:"delete-music", message: response, music: music }));
                     break;
                 case "close-room":
-                    const admin = message.username;
-                    const response = await closeRoom(admin);
+                    admin = message.username;
+                    response = await closeRoom(admin);
                     socket.send(JSON.stringify({ type:"close-room", message: response }));
                     break;
                 case "remove-music":
-                    const admin = message.username;
-                    const response = removeMusic(admin);
+                    admin = message.username;
+                    response = removeMusic(admin);
                     socket.send(JSON.stringify({ type:"remove-music", message: response }));
                     break;
                 case "get-songs":
-                    const admin = message.username;
-                    const response = await getSongs(admin);
+                    admin = message.username;
+                    response = await getSongs(admin);
                     socket.send(JSON.stringify({ type:"get-songs", message: response }));
                     break;
                 case "vote-song":
-                    const admin = message.username;
-                    const url = message.url;
-                    const response = await voteSong(admin, url);
+                    admin = message.username;
+                    url = message.url;
+                    response = await voteSong(admin, url);
                     socket.send(JSON.stringify({ type:"vote-song", message: response }));
                     break;
                 default:
