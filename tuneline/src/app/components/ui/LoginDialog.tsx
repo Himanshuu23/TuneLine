@@ -29,7 +29,7 @@ export default function LoginDialog() {
   return (
   
   <Dialog>
-      <DialogTrigger>
+      <DialogTrigger> 
        Login
       </DialogTrigger>
       <DialogContent>

@@ -4,6 +4,8 @@ import { useSession } from "next-auth/react";
 import useSocket from "../hooks";
 import LoginDialog from "./ui/LoginDialog";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export default function Navbar() {
   const [input, setInput] = useState("");
@@ -42,14 +44,14 @@ export default function Navbar() {
   }
 
   return (
-    <div className="flex justify-between">
-        <div className="flex justify-between gap-7">
+    <div className="flex place-content-around bg-black">
+        <div className="flex justify-between gap-7 p-4">
             <p>Logo</p>
         </div>
-        <div className="flex justify-between gap-9">
-          <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Join using Code" />
-          <button onClick={() => joinRoom(input, session?.user?.email || "")}>Join</button>
-          <button onClick={() => createRoom(session?.user?.email || "")}>Create Container</button>
+        <div className="flex justify-between gap-6">
+          <Input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Join using Code" />
+          <Button variant="secondary" onClick={() => joinRoom(input, session?.user?.email || "")}>Join</Button>
+          <Button variant="destructive" onClick={() => createRoom(session?.user?.email || "")}>Create Container</Button>
         </div>
         <div>
           <LoginDialog />
