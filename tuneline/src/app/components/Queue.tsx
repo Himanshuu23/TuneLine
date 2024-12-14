@@ -36,11 +36,19 @@ export default function Queue() {
   }
 
   function addSong(url:string, money:number ) {
-   socket?.send(JSON.stringify({ type:"add-music", admin:session?.user?.email, music: { youtubeUrl:url, money:money, votes:0 } }));
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket?.send(JSON.stringify({ type:"add-music", admin:session?.user?.email, music: { youtubeUrl:url, money:money, votes:0 } }));
+    } else {
+      console.error("WebSocket is NOT Open!")
+    }
   }
   
   function getSongs() {
-    socket?.send(JSON.stringify({ type:"get-songs", admin:session?.user?.email }))
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket?.send(JSON.stringify({ type:"get-songs", admin:session?.user?.email }))
+    } else {
+      console.error("WebSocket is NOT Open!")
+    }
   }
 
   useEffect(() => {

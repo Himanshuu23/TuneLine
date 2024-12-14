@@ -3,7 +3,7 @@
 import { useSession } from "next-auth/react";
 import useSocket from "../hooks";
 import LoginDialog from "./ui/LoginDialog";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -12,34 +12,44 @@ export default function Navbar() {
   const { data: session } = useSession();
   const socket = useSocket();
 
-  if(socket) {
-    socket.onmessage = async (data) => {
-      const message = await JSON.parse(JSON.stringify(data));
-      switch(message.type) {
-        case "join-room":
-          console.log(message.message)
-          window.location.href = `/room/${input}`
-        case "make-room":
-          console.log(message.message)
-          window.location.href = `/room/${input}`
+  useEffect(() => {
+    if(socket) {
+      socket.onmessage = async (data) => {
+        const message = await JSON.parse(JSON.stringify(data));
+        switch(message.type) {
+          case "join-room":
+            console.log(message.message)
+            window.location.href = `/room/${input}`
+            break;
+          case "make-room":
+            console.log(message.message)
+            window.location.href = `/room/${input}`
+            break;
+        }
       }
     }
-  }
+
+    return () => {
+      if(socket) {
+        socket.onmessage = null;
+      }
+    }
+  }, [socket, input])
   
   function createRoom(email:string) {
-    if (socket) {
+    if (socket && socket.readyState === WebSocket.OPEN) {
       socket.send(JSON.stringify({ type: "make-room", username: email }))
       window.location.href = "/room"
     } else {
-      return "An error occurred"
+      console.error("WebSocket is NOT Open!")
     }
   }
 
   function joinRoom(roomCode:string, username:string) {
-    if(socket) {
+    if(socket && socket.readyState === WebSocket.OPEN) {
       socket.send(JSON.stringify({ type:"join-room", username:username, roomCode:roomCode }));
     } else {
-      return "An error occurred"
+      console.error("WebSocket is NOT Open!")
     }
   }
 

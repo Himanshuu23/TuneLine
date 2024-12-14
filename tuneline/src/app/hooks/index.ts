@@ -11,7 +11,7 @@ export default function useSocket() {
       setSocket(newSocket);
 
       return () => newSocket.close();
-    })
+    }, [socket])
     
     return socket;
 }

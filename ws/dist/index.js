@@ -19,22 +19,22 @@ const database_1 = require("firebase/database");
 const ws_1 = require("ws");
 // PayPal payments and youtubeAPi part -> on the frontend -> the song returned by getSongs, addSongs -> use its ytUrl and send that to the ytApi 
 const firebaseConfig = {
-    apiKey: process.env.API_KEY,
-    authDomain: process.env.AUTH_DOMAIN,
-    databaseURL: process.env.DATABASE_URL,
-    projectId: process.env.PROJECT_ID,
-    storageBucket: process.env.STORAGE_BUCKET,
-    messagingSenderId: process.env.MESSAGING_SENDER_ID,
-    appId: process.env.APP_ID,
-    measurementId: process.env.MEASUREMENT_ID
+    apiKey: "AIzaSyBBwZD3rsc9Sq_iOM9FCfschqyBdwiXGYs",
+    authDomain: "tuneline-db993.firebaseapp.com",
+    databaseURL: "https://tuneline-db993-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "tuneline-db993",
+    storageBucket: "tuneline-db993.appspot.com",
+    messagingSenderId: "290016757537",
+    appId: "1:290016757537:web:50a100fcb06e7063fc2060",
+    measurementId: "G-PHCDP54SL1"
 };
 const fapp = (0, app_1.initializeApp)(firebaseConfig);
 const db = (0, database_1.getDatabase)(fapp);
 const ROOMS = (0, database_1.ref)(db, "rooms");
 let USERS = [];
 const app = (0, express_1.default)();
-const httpServer = app.listen(process.env.PORT, () => {
-    console.log(`Server Started at PORT:${process.env.PORT}`);
+const httpServer = app.listen(11011, () => {
+    console.log(`Server Started at PORT:${11011}`);
 });
 const wss = new ws_1.WebSocketServer({ server: httpServer });
 function makeNewRoom(admin) {
