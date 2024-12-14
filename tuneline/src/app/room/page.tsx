@@ -1,5 +1,5 @@
-import Room from "../components/Room";
+import RoomContainer from "../components/Room";
 
-export default function Queue() {
-  return <Room />
+export default function Room() {
+  return <RoomContainer />
 }

@@ -9,11 +9,25 @@ export default function Navbar() {
   const [input, setInput] = useState("");
   const { data: session } = useSession();
   const socket = useSocket();
+
+  if(socket) {
+    socket.onmessage = async (data) => {
+      const message = await JSON.parse(JSON.stringify(data));
+      switch(message.type) {
+        case "join-room":
+          console.log(message.message)
+          window.location.href = `/room/${input}`
+        case "make-room":
+          console.log(message.message)
+          window.location.href = `/room/${input}`
+      }
+    }
+  }
   
   function createRoom(email:string) {
     if (socket) {
       socket.send(JSON.stringify({ type: "make-room", username: email }))
-    window.location.href = "/room"
+      window.location.href = "/room"
     } else {
       return "An error occurred"
     }

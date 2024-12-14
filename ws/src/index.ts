@@ -1,3 +1,5 @@
+require('dotenv').config()
+
 import express from "express";
 import { FirebaseOptions, initializeApp } from "firebase/app";
 import { DataSnapshot, equalTo, get, getDatabase, orderByChild, push, query, ref, remove, update } from "firebase/database";
@@ -240,7 +242,7 @@ wss.on("connection", (socket, request) => {
   } else {
         socket.on("message", async (data) => {
             const message = JSON.parse(data.toString());
-            let admin, roomCode, username, response, url, music;
+            let admin, roomCode, username, response, url, music, songs;
             switch(message.type) {
                 case "make-room": 
                     admin = message.username;
@@ -278,7 +280,7 @@ wss.on("connection", (socket, request) => {
                 case "get-songs":
                     admin = message.username;
                     response = await getSongs(admin);
-                    socket.send(JSON.stringify({ type:"get-songs", message: response }));
+                    socket.send(JSON.stringify({ type:"get-songs", songs: response }));
                     break;
                 case "vote-song":
                     admin = message.username;
