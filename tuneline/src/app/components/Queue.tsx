@@ -14,6 +14,7 @@ export default function Queue() {
  // session.user.email -> email of the user 
   const socket = useSocket();
 
+ useEffect(() => {
   if(socket) {
     socket.onmessage = async (data) => {
       const message:MessageType = await JSON.parse(JSON.stringify(data));
@@ -35,6 +36,14 @@ export default function Queue() {
     }
   }
 
+
+    return () => {
+     if(socket) {
+        socket.onmessage = null;
+     }
+    } 
+ }, [socket, songs, setSongs])
+  
   function addSong(url:string, money:number ) {
     if (socket && socket.readyState === WebSocket.OPEN) {
       socket?.send(JSON.stringify({ type:"add-music", admin:session?.user?.email, music: { youtubeUrl:url, money:money, votes:0 } }));

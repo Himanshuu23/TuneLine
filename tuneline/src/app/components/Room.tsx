@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import useSocket from "../hooks";
 import Queue from "./Queue";
 import { useSession } from "next-auth/react";
@@ -10,6 +10,8 @@ export default function RoomContainer() {
   const { data: session } = useSession();
 
   const socket = useSocket();
+    
+  useEffect(() => {
     if (socket) {
       socket.onmessage = async (data) => {
         const message = await JSON.parse(JSON.stringify(data));
@@ -22,11 +24,19 @@ export default function RoomContainer() {
             window.location.href = '/'
         }
       }
-  }
+    }
+
+    return () => {
+        if (socket){
+            socket.onmessage = null;
+        }
+   }, [socket, setRoomCode])
 
   function closeRoom(url:string ) {
+   if(socket && socket.readyState === WebSocket.OPEN) {
     socket?.send(JSON.stringify({ type:"close-room", admin:session?.user?.email }));
    }
+  }
   
   return (
    <div>
