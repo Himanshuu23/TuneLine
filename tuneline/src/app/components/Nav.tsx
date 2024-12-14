@@ -30,13 +30,14 @@ export default function Navbar() {
   return (
     <div className="flex justify-between">
         <div className="flex justify-between gap-7">
-        <p>Logo</p>
-        <h2>Discover Other Queues</h2>
+            <p>Logo</p>
         </div>
         <div className="flex justify-between gap-9">
           <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Join using Code" />
           <button onClick={() => joinRoom(input, session?.user?.email || "")}>Join</button>
           <button onClick={() => createRoom(session?.user?.email || "")}>Create Container</button>
+        </div>
+        <div>
           <LoginDialog />
         </div>
     </div>
