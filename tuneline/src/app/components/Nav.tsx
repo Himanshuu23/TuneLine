@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 
 export default function Navbar() {
   const [input, setInput] = useState("");
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const socket = useSocket();
 
   useEffect(() => {
@@ -37,7 +37,7 @@ export default function Navbar() {
   }, [socket, input])
   
   function createRoom(email:string) {
-    if (socket && socket.readyState === WebSocket.OPEN) {
+    if (socket && socket.readyState === WebSocket.OPEN && status === "authenticated") {
       socket.send(JSON.stringify({ type: "make-room", username: email }))
       window.location.href = "/room"
     } else {
@@ -46,7 +46,7 @@ export default function Navbar() {
   }
 
   function joinRoom(roomCode:string, username:string) {
-    if(socket && socket.readyState === WebSocket.OPEN) {
+    if(socket && socket.readyState === WebSocket.OPEN && status === "authenticated") {
       socket.send(JSON.stringify({ type:"join-room", username:username, roomCode:roomCode }));
     } else {
       console.error("WebSocket is NOT Open!")

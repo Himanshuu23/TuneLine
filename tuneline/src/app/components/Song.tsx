@@ -5,7 +5,7 @@ import { useEffect } from "react";
 
 export default function Song({name}: {name:string}) {
     const socket = useSocket();
-    const { data: session } = useSession();
+    const { data: session, status } = useSession();
 
 useEffect(() => {
     if(socket) {
@@ -25,7 +25,7 @@ useEffect(() => {
 })
 
     function voteSong() { // -> when you will be using this component in the Queue -> pass the songs as props to this and pass the song with the socket message as well
-      if(socket && socket.readyState === WebSocket.OPEN){
+      if(socket && socket.readyState === WebSocket.OPEN && status === "authenticated"){
         socket?.send(JSON.stringify({ type:"vote-song", admin:session?.user?.email }))
       } 
     }
