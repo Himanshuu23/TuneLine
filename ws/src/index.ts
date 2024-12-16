@@ -1,9 +1,8 @@
 require('dotenv').config()
 
 import express from "express";
-import { FirebaseOptions, initializeApp } from "firebase/app";
-import { DataSnapshot, equalTo, get, getDatabase, orderByChild, push, query, ref, remove, update } from "firebase/database";
-import { WebSocketServer } from "ws";
+import { CLOSING, WebSocketServer } from "ws";
+import { Kafka } from "kafkajs";
 
 type musicType = {
   youtubeUrl: string,
@@ -18,20 +17,6 @@ type RateLimitingType = {
 };
 
 // PayPal payments and youtubeAPi part -> on the frontend -> the song returned by getSongs, addSongs -> use its ytUrl and send that to the ytApi 
-const firebaseConfig: FirebaseOptions = {
-  apiKey: "AIzaSyBBwZD3rsc9Sq_iOM9FCfschqyBdwiXGYs",
-  authDomain: "tuneline-db993.firebaseapp.com",
-  databaseURL: "https://tuneline-db993-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "tuneline-db993",
-  storageBucket: "tuneline-db993.appspot.com",
-  messagingSenderId: "290016757537",
-  appId: "1:290016757537:web:50a100fcb06e7063fc2060",
-  measurementId: "G-PHCDP54SL1"
-};
-
-const fapp = initializeApp(firebaseConfig);
-const db = getDatabase(fapp);
-const ROOMS = ref(db, "rooms");
 
 let USERS:RateLimitingType[] = [];
 
@@ -42,162 +27,89 @@ const httpServer = app.listen(11011, () => {
 
 const wss = new WebSocketServer({ server: httpServer });
 
+const kafka = new Kafka({ // for the url for the broker use the .env later -> the port assigned to the website and not the one using kafka on -> as right now running on local machine so using ip address for the same
+    clientId: "tune-line",
+    brokers: ["192.168.29.23"],
+});
+
+async function admin() {
+    const admin = kafka.admin();
+    console.log("Admin connecting...");
+    await admin.connect();
+    console.log("Admin Connected!");
+
+    console.log("Creating Topic...")
+    await admin.createTopics({
+
+       topics: [ 
+        {        
+            topic: 'music-queues',
+            numPartitions: 1,
+        },
+       ]
+    });
+    console.log("Topic Created!");
+
+    console.log("Disconnecting admin...");
+    await admin.disconnect();
+    console.log("Admin Disconnected");
+}
+
+async function producer() {
+    const producer = kafka.producer();
+
+    console.log("Connecting Producer...")
+    await producer.connect();
+    console.log("Producer Connected!")
+
+    await producer.send({
+        topic: 'music-queues',
+        partition: 0,
+        messages: [
+            { key: "song", value: JSON.stringify({ roomCode: "ABCD", ytUrl: "https://youtube.com/song", votes: "0", admin: "user123" }) }
+        ]
+    })
+
+    await producer.disconnect();
+}
+
+async function consumer() {
+    const consumer = kafka.consumer({ groupId: "something" }); // --> as we have no partition for the single topic so do i need to name the consumer-group?
+    await consumer.connect();
+    
+    await consumer.subscribe({ topics: ["music-queues"], fromBeginning: true })
+
+    await consumer.run({
+        eachMessage: async ({ topic, partition, message, heartbeat, pause }) => {
+            console.log(`${topic}: Part:${partition}: ${message.data.toString()}`)
+        };
+    });
+}
+
 async function makeNewRoom(admin: string): Promise<string> {
   let code = Math.random().toString(36).substring(2, 8);
-  const roomQuery = query(ROOMS, orderByChild("roomCode"), equalTo(code));
-  const snapshot = await get(roomQuery);
-  
-  if (snapshot.exists()) {
-    return makeNewRoom(admin);
-  } else {
-    await push(ROOMS, { roomCode: code, room: [], queue: [], admin });
-    return code;
-  }
+  // push(ROOMS, { roomCode: code, room: [], queue: [], admin });
 }
 
 async function joinRoom(roomCode: string, username: string): Promise<string> {
-  const roomQuery = query(ROOMS, orderByChild("roomCode"), equalTo(roomCode));
-  const snapshot = await get(roomQuery);
-  let userJoined = false;
-
-  if (snapshot.exists()) {
-    snapshot.forEach((childSnapshot) => {
-      const roomRef = childSnapshot.ref;
-      const currentRoom = childSnapshot.val().room;
-      update(roomRef, { room: [...currentRoom, username] });
-      userJoined = true;
-  });
-
-    if(userJoined) { 
-      return `${username} joined the room.`
-    } else {
-      return 'Failed to join the room.'
-    }      
-  } else {
-    return "Could not join. Room not found."
-  }
 }
 
 async function insertMusicIntoQueue(music: musicType, admin: string): Promise<string> {
-  const room = query(ROOMS, orderByChild("admin"), equalTo(admin));
-  const snapshot = await get(room);
-  let isMusicInQueue;
-
-  if (snapshot.exists()) {
-    snapshot.forEach((childSnapshot: DataSnapshot) => {
-      const roomRef = childSnapshot.ref;
-      const currentQueue = childSnapshot.val().queue || [];
-      
-      isMusicInQueue = currentQueue.some(
-        (item: musicType) => item.youtubeUrl === music.youtubeUrl
-      );
-
-      if (isMusicInQueue) {
-        return;
-      } else {
-        const updatedQueue = [music, ...currentQueue];
-        update(roomRef, { queue: updatedQueue });
-       }
-    });
-      if (isMusicInQueue) {
-        return "Song already exists in the queue.";
-      } else {
-        return "Music added successfully.";
-      }
-  } else {
-    return "Room not found.";
-  }
 }
 
 async function deleteMusicFromQueue(admin: string, music: musicType): Promise<string> { // this is if some user adds an inappropriate song inside the queue so the admin can remove the song directly from the queue
-  const room = query(ROOMS, orderByChild("admin"), equalTo(admin));
-  const snapshot = await get(room);
-
-  if (snapshot.exists()) {
-    snapshot.forEach((childSnapshot: DataSnapshot) => {
-      const roomRef = childSnapshot.ref;
-      const updatedQueue = (childSnapshot.val().queue || []).filter(
-        (song: musicType) => song.youtubeUrl !== music.youtubeUrl
-      );
-      update(roomRef, { queue: updatedQueue });
-    });
-    return "Music removed successfully.";
-  } else {
-    return "Room not found.";
-  }
 }
 
 async function removeMusic(admin: string) {
-  const room = query(ROOMS, orderByChild("admin"), equalTo(admin));
-  const snapshot = await get(room);
-
-  if(snapshot.exists()) {
-    snapshot.forEach((childSnapshot: DataSnapshot) => {
-      const roomRef = childSnapshot.ref;
-      update(roomRef, { queue: childSnapshot.val().queue.pop() })
-    })
-    return "Removed successfully."
-  } else {
-    return "Some error occurred."
-  }
 }
 
 async function getSongs(admin:string) {
-  const room = query(ROOMS, orderByChild("admin"), equalTo(admin));
-  const snapshot = await get(room);
-
-  if(snapshot.exists()) {
-    const songs:musicType[] = [];
-    snapshot.forEach((childSnapshot:DataSnapshot) => {
-      const currentRoom = childSnapshot.val();
-      songs.push(...currentRoom.queue);
-    })
-    songs.sort((a, b) => {
-        if(a.money == b.money) {
-            return b.votes - a.votes
-        } else {
-            return b.money - a.money
-        }
-    })
-    return songs;
-  } else {
-    return "Could not get the songs";
-  }
 }
 
 async function voteSong(admin:string, url:string) {
-  const room = query(ROOMS, orderByChild("admin"), equalTo(admin));
-  const snapshot = await get(room);
-
-  if (snapshot.exists()) {
-    snapshot.forEach((childSnapshot: DataSnapshot) => {
-      const roomRef = childSnapshot.ref;
-      const updatedQueue = (childSnapshot.val().queue || []).map(
-        (song:musicType) => {
-          if(song.youtubeUrl === url){
-            return {...song, votes: song.votes + 1}
-          }
-      });
-      update(roomRef, { queue: updatedQueue });
-    });
-    return "Voted!";
-  } else {
-    return "Room not found.";
-  }
 }
 
 async function closeRoom(admin: string): Promise<string> {
-  const room = query(ROOMS, orderByChild("admin"), equalTo(admin));
-  const snapshot = await get(room);
-
-  if (snapshot.exists()) {
-    snapshot.forEach((childSnapshot: DataSnapshot) => {
-      remove(childSnapshot.ref);
-    });
-    return "Room deleted!";
-  } else {
-    return "Room not found.";
-  }
 }
 
 function rateLimitByIp(ip:string):boolean {
@@ -229,7 +141,6 @@ function rateLimitByIp(ip:string):boolean {
 
 wss.on("connection", (socket, request) => {
   console.log("WebSocket Connection established!");
-  
   socket.on("error", console.error);
 
   const ip = request.socket.remoteAddress?.replace(/^::ffff:/, '') || "";

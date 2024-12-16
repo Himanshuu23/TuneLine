@@ -23,7 +23,7 @@ const firebaseConfig = {
     authDomain: "tuneline-db993.firebaseapp.com",
     databaseURL: "https://tuneline-db993-default-rtdb.asia-southeast1.firebasedatabase.app",
     projectId: "tuneline-db993",
-    storageBucket: "tuneline-db993.appspot.com",
+    storageBucket: "tuneline-db993.firebasestorage.app",
     messagingSenderId: "290016757537",
     appId: "1:290016757537:web:50a100fcb06e7063fc2060",
     measurementId: "G-PHCDP54SL1"
@@ -252,6 +252,7 @@ wss.on("connection", (socket, request) => {
                     username = message.username;
                     response = yield joinRoom(roomCode, username);
                     socket.send(JSON.stringify({ type: "join-room", message: response }));
+                    console.log(roomCode);
                     break;
                 case "add-music":
                     username = message.username;

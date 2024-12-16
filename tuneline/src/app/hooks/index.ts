@@ -6,12 +6,19 @@ export default function useSocket() {
     useEffect(() => {
       const newSocket = new WebSocket('ws://localhost:11011');
       newSocket.onopen = () => {
-        console.log("WS Connection Established ~server")
+        console.log("WS Connection Established ~client")
+      }
+      newSocket.onmessage = (mssg) => {
+        console.log(mssg.data)
       }
       setSocket(newSocket);
 
-      return () => newSocket.close();
-    }, [socket])
+      return () => {
+        if (newSocket.readyState === WebSocket.OPEN) {
+          newSocket.close();
+        }
+      }
+    }, [])
     
     return socket;
 }
