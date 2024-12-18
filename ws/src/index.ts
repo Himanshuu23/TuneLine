@@ -172,7 +172,7 @@ async function joinRoom(roomCode: string, username: string): Promise<string> { /
         { topic: TOPIC, partition: partition }
     ])
     await consumer.run({
-        eachMessage: async ({ , , message }) => {
+        eachMessage: async ({ message }: { message: messageType }) => {
             console.log("Recieved Message", message.data.toString())
         }
     })
@@ -184,9 +184,8 @@ async function insertMusicIntoQueue(roomCode:string, music: musicType, user: str
     const admin = kafka.admin();
     await admin.connect();
         
-    const message = getPartitionForRoomCode(roomCode) // -> parse this string object? -- need to see the format of the partitions first
-
-    // const newMessage = JSON.parse(message)   ---> need to see what the datatype of the partition is 
+    const newMessage = JSON.parse(getPartitionData(roomCode))
+    
     newMessage.queue.push(music)
 
     producer(roomCode, newMessage)
@@ -198,9 +197,8 @@ async function deleteMusicFromQueue(roomCode: string, user: string, music: music
    const admin = kafka.admin();
    await admin.connect();
 
-   const message = getPartitionForRoomCode(roomCode)
-   const newMessage = JSON.parse(message);
-   newMessage.queue.filter((song) => song !== music);
+   const newMessage = JSON.parse(getPartitionData(roomCode))
+   newMessage.queue.filter((song:musicType) => song !== music);
 
    producer(roomCode, newMessage);
    await admin.disconnect()
@@ -208,7 +206,7 @@ async function deleteMusicFromQueue(roomCode: string, user: string, music: music
 }
 
 async function removeMusic(roomCode, user, music) { // when the music has ended we have to remove the music from the queue
-    deleteMusicFromQueue(roomCode, user, music) // planning to remove this one though as doing the same work
+    deleteMusicFromQueue(roomCode, user, music) // planning to remove this one though as doing the same work as the deleteOne
 }
 
 async function getSongs(roomCode, user:string) { // we have to get all the sons from the room using the roomCode and return those
