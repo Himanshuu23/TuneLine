@@ -127,9 +127,9 @@ async function createPartition(roomCode:string) {
         const desiredPartition = getPartitionForRoomCode(roomCode);
         const partitionData = await getPartitionData(roomCode)
         console.log("this the daaata ->>>>>>", desiredPartition, partitionData);
-        const partition:partitionType = JSON.parse(partitionData);
+        const partition:dataType = JSON.parse(partitionData);
         console.log(partition, "inside the createPartition function 🥶🚣")
-        if( partition.data ) {
+        if( partition.roomCode.length >= 1 ) {
            return "Room alreiady exists"
         }
         else {
@@ -152,17 +152,25 @@ async function createPartition(roomCode:string) {
     }
 }
 
-async function getPartitionData(roomCode: string) {
-    const admin = kafka.admin();
-    await admin.connect();
+async function getPartitionData(roomCode: string): Promise<string> {
+    const consumer = kafka.consumer({ groupId: "something" });
+    await consumer.connect();
+
     const desiredPartition = getPartitionForRoomCode(roomCode);
-    const topicDetails = await admin.fetchTopicMetadata({ topics: [TOPIC] });
-    const partitions = topicDetails.topics[0]?.partitions;
-    await admin.disconnect();
-    if (!partitions || !partitions[desiredPartition] || partitions[desiredPartition] == undefined) {
-        return JSON.stringify([])
-    }
-    return JSON.stringify(partitions[desiredPartition]);
+    let lastMessage = JSON.stringify({ roomCode: "", queue: [], user: "" });
+
+    await consumer.subscribe({ topic: TOPIC, fromBeginning: true });
+
+    await consumer.run({
+        eachMessage: async ({ partition, message }: {partition: number, message: KafkaMessage}) => {
+            if (partition === desiredPartition  ) {
+                lastMessage = message.value ? JSON.parse(message.value.toString()) : lastMessage;
+            }
+        }
+    })
+
+    await consumer.disconnect();
+    return lastMessage;
 }        
 
 async function makeNewRoom(admin: string): Promise<string> { // returns string -> roomCode
@@ -196,7 +204,7 @@ async function insertMusicIntoQueue(roomCode:string, music: musicType, user: str
     await admin.connect();
         
     const newMessage = JSON.parse(await getPartitionData(roomCode))
-    
+    console.log(newMessage) 
     newMessage.queue.push(music)
 
     producer(roomCode, newMessage)
@@ -221,6 +229,7 @@ async function getSongs(roomCode :string) { // we have to get all the sons from 
     await admin.connect();
 
     const message = JSON.parse(await getPartitionData(roomCode));
+
     await admin.disconnect()
     return message.queue
 }

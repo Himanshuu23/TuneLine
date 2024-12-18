@@ -100,7 +100,7 @@ function createPartition(roomCode) {
             console.log("this the daaata ->>>>>>", desiredPartition, partitionData);
             const partition = JSON.parse(partitionData);
             console.log(partition, "inside the createPartition function 🥶🚣");
-            if (partition.data) {
+            if (partition.roomCode.length >= 1) {
                 return "Room alreiady exists";
             }
             else {
@@ -127,17 +127,20 @@ function createPartition(roomCode) {
 }
 function getPartitionData(roomCode) {
     return __awaiter(this, void 0, void 0, function* () {
-        var _a;
-        const admin = kafka.admin();
-        yield admin.connect();
+        const consumer = kafka.consumer({ groupId: "something" });
+        yield consumer.connect();
         const desiredPartition = getPartitionForRoomCode(roomCode);
-        const topicDetails = yield admin.fetchTopicMetadata({ topics: [TOPIC] });
-        const partitions = (_a = topicDetails.topics[0]) === null || _a === void 0 ? void 0 : _a.partitions;
-        yield admin.disconnect();
-        if (!partitions || !partitions[desiredPartition] || partitions[desiredPartition] == undefined) {
-            return JSON.stringify([]);
-        }
-        return JSON.stringify(partitions[desiredPartition]);
+        let lastMessage = JSON.stringify({ roomCode: "", queue: [], user: "" });
+        yield consumer.subscribe({ topic: TOPIC, fromBeginning: true });
+        yield consumer.run({
+            eachMessage: (_a) => __awaiter(this, [_a], void 0, function* ({ partition, message }) {
+                if (partition === desiredPartition) {
+                    lastMessage = message.value ? JSON.parse(message.value.toString()) : lastMessage;
+                }
+            })
+        });
+        yield consumer.disconnect();
+        return lastMessage;
     });
 }
 function makeNewRoom(admin) {
@@ -174,6 +177,7 @@ function insertMusicIntoQueue(roomCode, music, user) {
         const admin = kafka.admin();
         yield admin.connect();
         const newMessage = JSON.parse(yield getPartitionData(roomCode));
+        console.log(newMessage);
         newMessage.queue.push(music);
         producer(roomCode, newMessage);
         yield admin.disconnect();
