@@ -13,190 +13,206 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 require('dotenv').config();
+// INSIDE THE ADMIN FUNCTION MAKE IT LIKE -> SWITCH AND ACCEPT REQUEST TYPE AND SWITCH IT LIKE DELETE-SONG, MAKE-ROOM AND THEN DO THE THING WITH THAT --> WOULD AVIOD DOING ADMIN = KAFKA.ADMIN() MULTIPLE TIMES FOR THE SAME
 const express_1 = __importDefault(require("express"));
-const app_1 = require("firebase/app");
-const database_1 = require("firebase/database");
 const ws_1 = require("ws");
+const kafkajs_1 = require("kafkajs");
 // PayPal payments and youtubeAPi part -> on the frontend -> the song returned by getSongs, addSongs -> use its ytUrl and send that to the ytApi 
-const firebaseConfig = {
-    apiKey: "AIzaSyBBwZD3rsc9Sq_iOM9FCfschqyBdwiXGYs",
-    authDomain: "tuneline-db993.firebaseapp.com",
-    databaseURL: "https://tuneline-db993-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "tuneline-db993",
-    storageBucket: "tuneline-db993.firebasestorage.app",
-    messagingSenderId: "290016757537",
-    appId: "1:290016757537:web:50a100fcb06e7063fc2060",
-    measurementId: "G-PHCDP54SL1"
-};
-const fapp = (0, app_1.initializeApp)(firebaseConfig);
-const db = (0, database_1.getDatabase)(fapp);
-const ROOMS = (0, database_1.ref)(db, "rooms");
 let USERS = [];
 const app = (0, express_1.default)();
 const httpServer = app.listen(11011, () => {
     console.log(`Server Started at PORT:${11011}`);
 });
 const wss = new ws_1.WebSocketServer({ server: httpServer });
+const kafka = new kafkajs_1.Kafka({
+    clientId: "tune-line",
+    brokers: ["192.168.29.23:9092"],
+});
+const numPartitons = 50; // planning to keep these 200
+const TOPIC = "music-queues";
+function admin() {
+    return __awaiter(this, void 0, void 0, function* () {
+        const admin = kafka.admin(); // -> make it as well a global variable as it is being used everywhere
+        console.log("Admin connecting...");
+        yield admin.connect();
+        console.log("Admin Connected!");
+        console.log("Creating Topic...");
+        yield admin.createTopics({
+            topics: [
+                {
+                    topic: TOPIC,
+                    numPartitions: 1,
+                },
+            ]
+        });
+        console.log("Topic Created!");
+        console.log("Disconnecting admin...");
+        yield admin.disconnect();
+        console.log("Admin Disconnected");
+    });
+}
+function producer(roomCode, data) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const producer = kafka.producer();
+        const partition = getPartitionForRoomCode(roomCode);
+        console.log("Connecting Producer...");
+        yield producer.connect();
+        console.log("Producer Connected!");
+        yield producer.send({
+            topic: TOPIC,
+            messages: [
+                { key: "song", value: JSON.stringify(data), partition: partition }
+            ]
+        });
+        yield producer.disconnect();
+    });
+}
+function consumer() {
+    return __awaiter(this, void 0, void 0, function* () {
+        const consumer = kafka.consumer({ groupId: "something" }); // --> as we have no partition for the single topic so do i need to name the consumer-group?
+        yield consumer.connect();
+        yield consumer.subscribe({ topics: ["music-queues"], fromBeginning: true });
+        yield consumer.run({
+            eachMessage: (_a) => __awaiter(this, [_a], void 0, function* ({ message }) {
+                var _b;
+                console.log(`Message: ${(_b = message.value) === null || _b === void 0 ? void 0 : _b.toString()}`);
+            }),
+        });
+    });
+}
+String.prototype.hashCode = function () {
+    let hash = 0;
+    for (let i = 0; i < this.length; i++) {
+        hash = (hash << 5) - hash + this.charCodeAt(i);
+    }
+    return hash;
+};
+function getPartitionForRoomCode(roomCode) {
+    return Math.abs(roomCode.hashCode()) % numPartitons;
+}
+function createPartition(roomCode) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const admin = kafka.admin();
+        yield admin.connect();
+        try {
+            const desiredPartition = getPartitionForRoomCode(roomCode);
+            const partition = JSON.parse(yield getPartitionData(roomCode));
+            if (partition.data.length >= 1) {
+                return "Room alreiady exists";
+            }
+            yield admin.createPartitions({
+                topicPartitions: [
+                    {
+                        topic: TOPIC,
+                        count: desiredPartition
+                    },
+                ]
+            });
+            return roomCode;
+        }
+        catch (error) {
+            console.log(error);
+            return JSON.stringify(error);
+        }
+        finally {
+            yield admin.disconnect();
+        }
+    });
+}
+function getPartitionData(roomCode) {
+    return __awaiter(this, void 0, void 0, function* () {
+        var _a;
+        const admin = kafka.admin();
+        yield admin.connect();
+        const desiredPartition = getPartitionForRoomCode(roomCode);
+        const topicDetails = yield admin.fetchTopicMetadata({ topics: [TOPIC] });
+        const partitions = (_a = topicDetails.topics[0]) === null || _a === void 0 ? void 0 : _a.partitions;
+        admin.disconnect();
+        return JSON.stringify(partitions[desiredPartition]);
+    });
+}
 function makeNewRoom(admin) {
     return __awaiter(this, void 0, void 0, function* () {
         let code = Math.random().toString(36).substring(2, 8);
-        const roomQuery = (0, database_1.query)(ROOMS, (0, database_1.orderByChild)("roomCode"), (0, database_1.equalTo)(code));
-        const snapshot = yield (0, database_1.get)(roomQuery);
-        if (snapshot.exists()) {
-            return makeNewRoom(admin);
-        }
-        else {
-            yield (0, database_1.push)(ROOMS, { roomCode: code, room: [], queue: [], admin });
-            return code;
-        }
+        const response = yield createPartition(code);
+        producer(code, { roomCode: code, queue: [], user: admin });
+        return response;
     });
 }
 function joinRoom(roomCode, username) {
     return __awaiter(this, void 0, void 0, function* () {
-        const roomQuery = (0, database_1.query)(ROOMS, (0, database_1.orderByChild)("roomCode"), (0, database_1.equalTo)(roomCode));
-        const snapshot = yield (0, database_1.get)(roomQuery);
-        let userJoined = false;
-        if (snapshot.exists()) {
-            snapshot.forEach((childSnapshot) => {
-                const roomRef = childSnapshot.ref;
-                const currentRoom = childSnapshot.val().room;
-                (0, database_1.update)(roomRef, { room: [...currentRoom, username] });
-                userJoined = true;
-            });
-            if (userJoined) {
-                return `${username} joined the room.`;
-            }
-            else {
-                return 'Failed to join the room.';
-            }
-        }
-        else {
-            return "Could not join. Room not found.";
-        }
-    });
-}
-function insertMusicIntoQueue(music, admin) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const room = (0, database_1.query)(ROOMS, (0, database_1.orderByChild)("admin"), (0, database_1.equalTo)(admin));
-        const snapshot = yield (0, database_1.get)(room);
-        let isMusicInQueue;
-        if (snapshot.exists()) {
-            snapshot.forEach((childSnapshot) => {
-                const roomRef = childSnapshot.ref;
-                const currentQueue = childSnapshot.val().queue || [];
-                isMusicInQueue = currentQueue.some((item) => item.youtubeUrl === music.youtubeUrl);
-                if (isMusicInQueue) {
-                    return;
+        const consumer = kafka.consumer({ groupId: "something" });
+        const partitionIndex = getPartitionForRoomCode(roomCode);
+        yield consumer.connect();
+        yield consumer.subscribe({
+            topic: TOPIC,
+            fromBeginning: true
+        });
+        yield consumer.run({
+            eachMessage: (_a) => __awaiter(this, [_a], void 0, function* ({ partition, message }) {
+                var _b;
+                if (partition === partitionIndex) {
+                    console.log("Recieved Message", (_b = message.value) === null || _b === void 0 ? void 0 : _b.toString());
                 }
-                else {
-                    const updatedQueue = [music, ...currentQueue];
-                    (0, database_1.update)(roomRef, { queue: updatedQueue });
-                }
-            });
-            if (isMusicInQueue) {
-                return "Song already exists in the queue.";
+            })
+        });
+        yield consumer.disconnect();
+        return `${username} joined the room!`;
+    });
+}
+function insertMusicIntoQueue(roomCode, music, user) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const admin = kafka.admin();
+        yield admin.connect();
+        const newMessage = JSON.parse(yield getPartitionData(roomCode));
+        newMessage.queue.push(music);
+        producer(roomCode, newMessage);
+        yield admin.disconnect();
+        return `${user} added the song ${music.youtubeUrl} into the queue! vote it to play`;
+    });
+}
+function deleteMusicFromQueue(roomCode, music) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const admin = kafka.admin();
+        yield admin.connect();
+        const newMessage = JSON.parse(yield getPartitionData(roomCode));
+        newMessage.queue.filter((song) => song !== music);
+        producer(roomCode, newMessage);
+        yield admin.disconnect();
+        return "admin deleted the song for the same";
+    });
+}
+function getSongs(roomCode) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const admin = kafka.admin();
+        yield admin.connect();
+        const message = JSON.parse(yield getPartitionData(roomCode));
+        yield admin.disconnect();
+        return message.queue;
+    });
+}
+function voteSong(roomCode, url) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const admin = kafka.admin();
+        yield admin.connect();
+        const message = JSON.parse(yield getPartitionData(roomCode));
+        const newMessage = JSON.parse(message);
+        const newQueue = newMessage.queue.map((song) => {
+            if (song.youtubeUrl === url) {
+                song.votes + 1;
+                return song;
             }
-            else {
-                return "Music added successfully.";
-            }
-        }
-        else {
-            return "Room not found.";
-        }
+            return song;
+        });
+        newMessage.queue = newQueue;
+        producer(roomCode, newMessage);
+        yield admin.disconnect();
     });
 }
-function deleteMusicFromQueue(admin, music) {
+function closeRoom(roomCode) {
     return __awaiter(this, void 0, void 0, function* () {
-        const room = (0, database_1.query)(ROOMS, (0, database_1.orderByChild)("admin"), (0, database_1.equalTo)(admin));
-        const snapshot = yield (0, database_1.get)(room);
-        if (snapshot.exists()) {
-            snapshot.forEach((childSnapshot) => {
-                const roomRef = childSnapshot.ref;
-                const updatedQueue = (childSnapshot.val().queue || []).filter((song) => song.youtubeUrl !== music.youtubeUrl);
-                (0, database_1.update)(roomRef, { queue: updatedQueue });
-            });
-            return "Music removed successfully.";
-        }
-        else {
-            return "Room not found.";
-        }
-    });
-}
-function removeMusic(admin) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const room = (0, database_1.query)(ROOMS, (0, database_1.orderByChild)("admin"), (0, database_1.equalTo)(admin));
-        const snapshot = yield (0, database_1.get)(room);
-        if (snapshot.exists()) {
-            snapshot.forEach((childSnapshot) => {
-                const roomRef = childSnapshot.ref;
-                (0, database_1.update)(roomRef, { queue: childSnapshot.val().queue.pop() });
-            });
-            return "Removed successfully.";
-        }
-        else {
-            return "Some error occurred.";
-        }
-    });
-}
-function getSongs(admin) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const room = (0, database_1.query)(ROOMS, (0, database_1.orderByChild)("admin"), (0, database_1.equalTo)(admin));
-        const snapshot = yield (0, database_1.get)(room);
-        if (snapshot.exists()) {
-            const songs = [];
-            snapshot.forEach((childSnapshot) => {
-                const currentRoom = childSnapshot.val();
-                songs.push(...currentRoom.queue);
-            });
-            songs.sort((a, b) => {
-                if (a.money == b.money) {
-                    return b.votes - a.votes;
-                }
-                else {
-                    return b.money - a.money;
-                }
-            });
-            return songs;
-        }
-        else {
-            return "Could not get the songs";
-        }
-    });
-}
-function voteSong(admin, url) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const room = (0, database_1.query)(ROOMS, (0, database_1.orderByChild)("admin"), (0, database_1.equalTo)(admin));
-        const snapshot = yield (0, database_1.get)(room);
-        if (snapshot.exists()) {
-            snapshot.forEach((childSnapshot) => {
-                const roomRef = childSnapshot.ref;
-                const updatedQueue = (childSnapshot.val().queue || []).map((song) => {
-                    if (song.youtubeUrl === url) {
-                        return Object.assign(Object.assign({}, song), { votes: song.votes + 1 });
-                    }
-                });
-                (0, database_1.update)(roomRef, { queue: updatedQueue });
-            });
-            return "Voted!";
-        }
-        else {
-            return "Room not found.";
-        }
-    });
-}
-function closeRoom(admin) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const room = (0, database_1.query)(ROOMS, (0, database_1.orderByChild)("admin"), (0, database_1.equalTo)(admin));
-        const snapshot = yield (0, database_1.get)(room);
-        if (snapshot.exists()) {
-            snapshot.forEach((childSnapshot) => {
-                (0, database_1.remove)(childSnapshot.ref);
-            });
-            return "Room deleted!";
-        }
-        else {
-            return "Room not found.";
-        }
+        producer(roomCode, { roomCode: "", queue: [], user: "" });
+        return `Room Closed!`;
     });
 }
 function rateLimitByIp(ip) {
@@ -228,6 +244,7 @@ function rateLimitByIp(ip) {
 wss.on("connection", (socket, request) => {
     var _a;
     console.log("WebSocket Connection established!");
+    admin();
     socket.on("error", console.error);
     const ip = ((_a = request.socket.remoteAddress) === null || _a === void 0 ? void 0 : _a.replace(/^::ffff:/, '')) || "";
     const dontLetHimGo = rateLimitByIp(ip);
@@ -240,7 +257,7 @@ wss.on("connection", (socket, request) => {
     else {
         socket.on("message", (data) => __awaiter(void 0, void 0, void 0, function* () {
             const message = JSON.parse(data.toString());
-            let admin, roomCode, username, response, url, music, songs;
+            let admin, roomCode, username, response, url, music;
             switch (message.type) {
                 case "make-room":
                     admin = message.username;
@@ -257,34 +274,30 @@ wss.on("connection", (socket, request) => {
                 case "add-music":
                     username = message.username;
                     music = message.music;
-                    response = yield insertMusicIntoQueue(music, username);
+                    roomCode = message.roomCode;
+                    response = yield insertMusicIntoQueue(roomCode, music, username);
                     socket.send(JSON.stringify({ type: "add-music", message: response, music: music }));
                     break;
                 case "delete-music":
                     music = message.music;
-                    username = message.username;
-                    response = yield deleteMusicFromQueue(username, music);
+                    roomCode = message.roomCode;
+                    response = yield deleteMusicFromQueue(roomCode, music);
                     socket.send(JSON.stringify({ type: "delete-music", message: response, music: music }));
                     break;
                 case "close-room":
-                    admin = message.username;
-                    response = yield closeRoom(admin);
+                    roomCode = message.roomCode;
+                    response = yield closeRoom(roomCode);
                     socket.send(JSON.stringify({ type: "close-room", message: response }));
                     break;
-                case "remove-music":
-                    admin = message.username;
-                    response = removeMusic(admin);
-                    socket.send(JSON.stringify({ type: "remove-music", message: response }));
-                    break;
                 case "get-songs":
-                    admin = message.username;
-                    response = yield getSongs(admin);
+                    roomCode = message.roomCode;
+                    response = yield getSongs(roomCode);
                     socket.send(JSON.stringify({ type: "get-songs", songs: response }));
                     break;
                 case "vote-song":
-                    admin = message.username;
-                    url = message.url;
-                    response = yield voteSong(admin, url);
+                    roomCode = message.roomCode;
+                    url = message.song.url;
+                    response = yield voteSong(roomCode, url);
                     socket.send(JSON.stringify({ type: "vote-song", message: response }));
                     break;
                 default:

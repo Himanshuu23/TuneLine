@@ -46,7 +46,7 @@ const wss = new WebSocketServer({ server: httpServer });
 
 const kafka = new Kafka({ // for the url for the broker use the .env later -> the port assigned to the website and not the one using kafka on -> as right now running on local machine so using ip address for the same
     clientId: "tune-line",
-    brokers: ["192.168.29.23"],
+    brokers: ["192.168.29.23:9092"],
 });
 
 const numPartitons = 50; // planning to keep these 200
@@ -268,6 +268,7 @@ function rateLimitByIp(ip:string):boolean {
 
 wss.on("connection", (socket, request) => {
   console.log("WebSocket Connection established!");
+  admin();  
   socket.on("error", console.error);
 
   const ip = request.socket.remoteAddress?.replace(/^::ffff:/, '') || "";
@@ -282,7 +283,7 @@ wss.on("connection", (socket, request) => {
             const message = JSON.parse(data.toString());
             let admin, roomCode, username, response, url, music;
             switch(message.type) {
-                case "make-room": 
+                case "make-room":
                     admin = message.username;
                     roomCode = await makeNewRoom(admin);
                     socket.send(JSON.stringify({ type:"make-room", message: "created-room", roomCode:roomCode }));
