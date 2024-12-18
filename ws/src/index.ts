@@ -280,7 +280,7 @@ wss.on("connection", (socket, request) => {
   } else {
         socket.on("message", async (data) => {
             const message = JSON.parse(data.toString());
-            let admin, roomCode, username, response, url, music, songs;
+            let admin, roomCode, username, response, url, music;
             switch(message.type) {
                 case "make-room": 
                     admin = message.username;
