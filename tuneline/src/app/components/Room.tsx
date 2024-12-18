@@ -7,7 +7,7 @@ import { useSession } from "next-auth/react";
 
 export default function RoomContainer() {
   const [roomCode, setRoomCode] = useState<string>("")
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
 
   const socket = useSocket();
     
@@ -30,10 +30,11 @@ export default function RoomContainer() {
         if (socket){
             socket.onmessage = null;
         }
+    }
    }, [socket, setRoomCode])
 
   function closeRoom(url:string ) {
-   if(socket && socket.readyState === WebSocket.OPEN) {
+   if(socket && socket.readyState === WebSocket.OPEN && status === "authenticated") {
     socket?.send(JSON.stringify({ type:"close-room", admin:session?.user?.email }));
    }
   }

@@ -10,7 +10,7 @@ export default function Queue() {
   const [money, setMoney] = useState<number>(0);
   const [url, setUrl] = useState<string>("");
   const [songs, setSongs] = useState<string[]>([]);
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
  // session.user.email -> email of the user 
   const socket = useSocket();
 
@@ -45,7 +45,7 @@ export default function Queue() {
  }, [socket, songs, setSongs])
   
   function addSong(url:string, money:number ) {
-    if (socket && socket.readyState === WebSocket.OPEN) {
+    if (socket && socket.readyState === WebSocket.OPEN && status === "authenticated") {
       socket?.send(JSON.stringify({ type:"add-music", admin:session?.user?.email, music: { youtubeUrl:url, money:money, votes:0 } }));
     } else {
       console.error("WebSocket is NOT Open!")
@@ -53,7 +53,7 @@ export default function Queue() {
   }
   
   function getSongs() {
-    if (socket && socket.readyState === WebSocket.OPEN) {
+    if (socket && socket.readyState === WebSocket.OPEN && status === "authenticated") {
       socket?.send(JSON.stringify({ type:"get-songs", admin:session?.user?.email }))
     } else {
       console.error("WebSocket is NOT Open!")

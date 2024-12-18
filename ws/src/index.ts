@@ -1,8 +1,14 @@
 require('dotenv').config()
-
+// INSIDE THE ADMIN FUNCTION MAKE IT LIKE -> SWITCH AND ACCEPT REQUEST TYPE AND SWITCH IT LIKE DELETE-SONG, MAKE-ROOM AND THEN DO THE THING WITH THAT --> WOULD AVIOD DOING ADMIN = KAFKA.ADMIN() MULTIPLE TIMES FOR THE SAME
 import express from "express";
-import { CLOSING, WebSocketServer } from "ws";
+import { WebSocketServer } from "ws";
 import { Kafka } from "kafkajs";
+
+type dataType = {
+    roomCode: string,
+    queue: musicType[],
+    user: string,
+}
 
 type musicType = {
   youtubeUrl: string,
@@ -15,6 +21,15 @@ type RateLimitingType = {
     count: number,
     time: number 
 };
+
+type messageType = {
+    data: string
+}
+
+type partitionType = {
+    partitionId: number,
+    data: partitionType[]
+}
 
 // PayPal payments and youtubeAPi part -> on the frontend -> the song returned by getSongs, addSongs -> use its ytUrl and send that to the ytApi 
 
@@ -32,8 +47,11 @@ const kafka = new Kafka({ // for the url for the broker use the .env later -> th
     brokers: ["192.168.29.23"],
 });
 
+const numPartitons = 50; // planning to keep these 200
+const TOPIC = "music-queues";
+
 async function admin() {
-    const admin = kafka.admin();
+    const admin = kafka.admin(); // -> make it as well a global variable as it is being used everywhere
     console.log("Admin connecting...");
     await admin.connect();
     console.log("Admin Connected!");
@@ -43,7 +61,7 @@ async function admin() {
 
        topics: [ 
         {        
-            topic: 'music-queues',
+            topic: TOPIC,
             numPartitions: 1,
         },
        ]
@@ -55,18 +73,19 @@ async function admin() {
     console.log("Admin Disconnected");
 }
 
-async function producer() {
+async function producer(roomCode: string, data: dataType) { // -> data would be of the type push(ROOMS, { roomCode: code, room: [], queue: [], admin });
+
     const producer = kafka.producer();
+    const partition = getPartitionForRoomCode(roomCode);
 
     console.log("Connecting Producer...")
     await producer.connect();
     console.log("Producer Connected!")
 
     await producer.send({
-        topic: 'music-queues',
-        partition: 0,
+        topic: TOPIC,
         messages: [
-            { key: "song", value: JSON.stringify({ roomCode: "ABCD", ytUrl: "https://youtube.com/song", votes: "0", admin: "user123" }) }
+            { key: "song", value: JSON.stringify(data), partition: partition }
         ]
     })
 
@@ -80,36 +99,147 @@ async function consumer() {
     await consumer.subscribe({ topics: ["music-queues"], fromBeginning: true })
 
     await consumer.run({
-        eachMessage: async ({ topic, partition, message, heartbeat, pause }) => {
-            console.log(`${topic}: Part:${partition}: ${message.data.toString()}`)
-        };
+        eachMessage: async ({ message}: {message: messageType}) => {
+            console.log(`Message: ${message.data.toString()}`)
+        },
     });
 }
 
-async function makeNewRoom(admin: string): Promise<string> {
+String.prototype.hashCode = function () {
+    let hash = 0
+    for (let i = 0; i < this.length; i++){
+        hash = (hash << 5) - hash + this.charCodeAt(i);
+    }
+
+    return hash;
+}
+
+function getPartitionForRoomCode(roomCode: string) {
+    return Math.abs(roomCode.hashCode()) % numPartitons;
+}
+
+async function createPartition(roomCode:string) {
+    const admin = kafka.admin();
+    await admin.connect();
+    try {
+        const desiredPartition = getPartitionForRoomCode(roomCode);
+        const partition:partitionType = JSON.parse(getPartitionData(roomCode));
+        if(partition.data.length >= 1) {
+           return "Room alreiady exists"
+        }
+        await admin.createPartitions({
+            topicPartitions: [
+                {
+                    topic: TOPIC,
+                    count: desiredPartition
+                },
+            ]
+        })
+        return roomCode
+    } catch (error) {
+        console.log(error);
+    } finally {
+        await admin.disconnect();
+    }
+}
+
+function getPartitionData(roomCode: string) {
+    const admin = kafka.admin();
+    await admin.connect();
+    const desiredPartition = getPartitionForRoomCode(roomCode);
+    const topicDetails = await admin.fetchTopicMetadata({ topics: [TOPIC] });
+    const partitions = topicDetails.topics[0]?.partitions;
+    admin.disconnect();
+    return JSON.stringify(partitions[desiredPartition]);
+}        
+
+async function makeNewRoom(admin: string): Promise<string> { // returns string -> roomCode
   let code = Math.random().toString(36).substring(2, 8);
-  // push(ROOMS, { roomCode: code, room: [], queue: [], admin });
+  const response = createPartition(code)
+  producer(code, { roomCode: code, queue: [], user: admin });
+  return code; // --> response to be returned though
 }
 
-async function joinRoom(roomCode: string, username: string): Promise<string> {
+async function joinRoom(roomCode: string, username: string): Promise<string> { // send response who joined the room and if could not then send the response back for the same
+    const consumer = kafka.consumer({ groupId: "something" })
+    const partition = getPartitionForRoomCode(roomCode)
+    await consumer.connect()
+    await consumer.subscribe({
+        topic: TOPIC,
+        fromBeginning: true
+    })
+    await consumer.assign([
+        { topic: TOPIC, partition: partition }
+    ])
+    await consumer.run({
+        eachMessage: async ({ , , message }) => {
+            console.log("Recieved Message", message.data.toString())
+        }
+    })
+    await consumer.disconnect()
+    console.log(`${username} joined the room!`)
 }
 
-async function insertMusicIntoQueue(music: musicType, admin: string): Promise<string> {
+async function insertMusicIntoQueue(roomCode:string, music: musicType, user: string): Promise<string> { // the response would be like this guy added this music 
+    const admin = kafka.admin();
+    await admin.connect();
+        
+    const message = getPartitionForRoomCode(roomCode) // -> parse this string object? -- need to see the format of the partitions first
+
+    // const newMessage = JSON.parse(message)   ---> need to see what the datatype of the partition is 
+    newMessage.queue.push(music)
+
+    producer(roomCode, newMessage)
+    await admin.disconnect()
+    return `${user} added the song ${music.youtubeUrl} into the queue! vote it to play`
 }
 
-async function deleteMusicFromQueue(admin: string, music: musicType): Promise<string> { // this is if some user adds an inappropriate song inside the queue so the admin can remove the song directly from the queue
+async function deleteMusicFromQueue(roomCode: string, user: string, music: musicType): Promise<string> { // this is if some user adds an inappropriate song inside the queue so the admin can remove the song directly from the queue, admin removed the music -> maybe donot show the music deleted by the admin on the UI since this would be bad for the streamer
+   const admin = kafka.admin();
+   await admin.connect();
+
+   const message = getPartitionForRoomCode(roomCode)
+   const newMessage = JSON.parse(message);
+   newMessage.queue.filter((song) => song !== music);
+
+   producer(roomCode, newMessage);
+   await admin.disconnect()
+   return "admin deleted the song for the same"
 }
 
-async function removeMusic(admin: string) {
+async function removeMusic(roomCode, user, music) { // when the music has ended we have to remove the music from the queue
+    deleteMusicFromQueue(roomCode, user, music) // planning to remove this one though as doing the same work
 }
 
-async function getSongs(admin:string) {
+async function getSongs(roomCode, user:string) { // we have to get all the sons from the room using the roomCode and return those
+    const admin = kafka.admin();
+    await admin.connect();
+
+    const message = getPartitionForRoomCode(roomCode);
+    await admin.disconnect()
+    return message.queue
 }
 
-async function voteSong(admin:string, url:string) {
+async function voteSong(roomCode: string, user:string, url:string) { // just increase the vote and return the following user voted the followin song
+    const admin = kafka.admin();
+    await admin.connect();
+
+    const message = getPartitionForRoomCode(roomCode);
+    const newMessage = JSON.parse(message);
+    const newQueue = newMessage.queue.map((song) => {
+        if (song.ytUrl === url) {
+            song.votes + 1
+            return song
+        }
+        return song
+    })
+    newMessage.queue = newQueue
+    producer(roomCode, newMessage)
+    await admin.disconnect()
 }
 
-async function closeRoom(admin: string): Promise<string> {
+async function closeRoom(roomCode: string): Promise<string> { // just close the room and show the response back to the admin for the same and remove the data for the following partition from the queue
+    producer(roomCode, {})
 }
 
 function rateLimitByIp(ip:string):boolean {

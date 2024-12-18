@@ -2,11 +2,12 @@ import { useSession } from "next-auth/react"
 import useSocket from "../hooks";
 
 export default function Song({song}:{song:any}) {
-  const { data:session } = useSession();
+  const { data:session, status } = useSession();
 
+  const socket = useSocket();
 //every time we vote we have to getSongs()? or it does the increment realtime on its own
   async function voteSong(admin:string, url:string) {
-   if(socket && socket.readyState === WebSocket.OPEN){ 
+   if(socket && socket.readyState === WebSocket.OPEN && status === "authenticated"){ 
     const newSocket = useSocket();
     newSocket?.send(JSON.stringify({message:"vote-song", admin:admin, url:url}));
    }

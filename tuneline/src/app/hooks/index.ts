@@ -13,11 +13,15 @@ export default function useSocket() {
       }
       setSocket(newSocket);
 
+<<<<<<< HEAD
       return () => {
         if (newSocket.readyState === WebSocket.OPEN) {
           newSocket.close();
         }
       }
+=======
+      return () => newSocket.close();
+>>>>>>> 25e9b3ada077d865eefb9df0d6ab8a5eb414075f
     }, [])
     
     return socket;
