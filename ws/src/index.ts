@@ -213,7 +213,7 @@ async function getSongs(roomCode, user:string) { // we have to get all the sons 
     const admin = kafka.admin();
     await admin.connect();
 
-    const message = getPartitionForRoomCode(roomCode);
+    const message = JSON.parse(getPartitionData(roomCode));
     await admin.disconnect()
     return message.queue
 }
@@ -222,10 +222,10 @@ async function voteSong(roomCode: string, user:string, url:string) { // just inc
     const admin = kafka.admin();
     await admin.connect();
 
-    const message = getPartitionForRoomCode(roomCode);
+    const message = JSON.parse(getPartitionData(roomCode));
     const newMessage = JSON.parse(message);
-    const newQueue = newMessage.queue.map((song) => {
-        if (song.ytUrl === url) {
+    const newQueue = newMessage.queue.map((song:musicType) => {
+        if (song.youtubeUrl === url) {
             song.votes + 1
             return song
         }
@@ -237,7 +237,7 @@ async function voteSong(roomCode: string, user:string, url:string) { // just inc
 }
 
 async function closeRoom(roomCode: string): Promise<string> { // just close the room and show the response back to the admin for the same and remove the data for the following partition from the queue
-    producer(roomCode, {})
+    producer(roomCode, { roomCode: "", queue: [], user: "" })
 }
 
 function rateLimitByIp(ip:string):boolean {
