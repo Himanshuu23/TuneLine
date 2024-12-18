@@ -100,15 +100,18 @@ function createPartition(roomCode) {
             if (partition.data.length >= 1) {
                 return "Room alreiady exists";
             }
-            yield admin.createPartitions({
-                topicPartitions: [
-                    {
-                        topic: TOPIC,
-                        count: desiredPartition
-                    },
-                ]
-            });
-            return roomCode;
+            else {
+                yield admin.createPartitions({
+                    topicPartitions: [
+                        {
+                            topic: TOPIC,
+                            count: desiredPartition
+                        },
+                    ]
+                });
+                console.log("room created", roomCode, "inside the createPartiton function");
+                return roomCode;
+            }
         }
         catch (error) {
             console.log(error);
@@ -127,14 +130,16 @@ function getPartitionData(roomCode) {
         const desiredPartition = getPartitionForRoomCode(roomCode);
         const topicDetails = yield admin.fetchTopicMetadata({ topics: [TOPIC] });
         const partitions = (_a = topicDetails.topics[0]) === null || _a === void 0 ? void 0 : _a.partitions;
-        admin.disconnect();
+        yield admin.disconnect();
         return JSON.stringify(partitions[desiredPartition]);
     });
 }
 function makeNewRoom(admin) {
     return __awaiter(this, void 0, void 0, function* () {
         let code = Math.random().toString(36).substring(2, 8);
+        console.log(code, "inside the makeRoom function");
         const response = yield createPartition(code);
+        console.log(response, "inside the makeRoom function");
         producer(code, { roomCode: code, queue: [], user: admin });
         return response;
     });

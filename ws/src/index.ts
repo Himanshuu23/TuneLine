@@ -129,15 +129,18 @@ async function createPartition(roomCode:string) {
         if(partition.data.length >= 1) {
            return "Room alreiady exists"
         }
-        await admin.createPartitions({
-            topicPartitions: [
-                {
-                    topic: TOPIC,
-                    count: desiredPartition
-                },
-            ]
-        })
-        return roomCode
+        else {
+            await admin.createPartitions({
+                topicPartitions: [
+                    {
+                        topic: TOPIC,
+                        count: desiredPartition
+                    },
+                ]
+            })
+            console.log("room created", roomCode, "inside the createPartiton function")
+            return roomCode
+        }
     } catch (error) {
        console.log(error);
        return JSON.stringify(error);
@@ -152,13 +155,15 @@ async function getPartitionData(roomCode: string) {
     const desiredPartition = getPartitionForRoomCode(roomCode);
     const topicDetails = await admin.fetchTopicMetadata({ topics: [TOPIC] });
     const partitions = topicDetails.topics[0]?.partitions;
-    admin.disconnect();
+    await admin.disconnect();
     return JSON.stringify(partitions[desiredPartition]);
 }        
 
 async function makeNewRoom(admin: string): Promise<string> { // returns string -> roomCode
   let code = Math.random().toString(36).substring(2, 8);
+  console.log(code, "inside the makeRoom function")
   const response = await createPartition(code)
+  console.log(response, "inside the makeRoom function")
   producer(code, { roomCode: code, queue: [], user: admin });
   return response;
 }
