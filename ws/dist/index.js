@@ -100,7 +100,7 @@ function createPartition(roomCode) {
             console.log("this the daaata ->>>>>>", desiredPartition, partitionData);
             const partition = JSON.parse(partitionData);
             console.log(partition, "inside the createPartition function 🥶🚣");
-            if (partition.data.length >= 1) {
+            if (partition.data) {
                 return "Room alreiady exists";
             }
             else {
@@ -133,9 +133,8 @@ function getPartitionData(roomCode) {
         const desiredPartition = getPartitionForRoomCode(roomCode);
         const topicDetails = yield admin.fetchTopicMetadata({ topics: [TOPIC] });
         const partitions = (_a = topicDetails.topics[0]) === null || _a === void 0 ? void 0 : _a.partitions;
-        console.log("partitions", partitions);
         yield admin.disconnect();
-        if (!partitions || partitions[desiredPartition]) {
+        if (!partitions || !partitions[desiredPartition] || partitions[desiredPartition] == undefined) {
             return JSON.stringify([]);
         }
         return JSON.stringify(partitions[desiredPartition]);

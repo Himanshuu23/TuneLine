@@ -129,7 +129,7 @@ async function createPartition(roomCode:string) {
         console.log("this the daaata ->>>>>>", desiredPartition, partitionData);
         const partition:partitionType = JSON.parse(partitionData);
         console.log(partition, "inside the createPartition function 🥶🚣")
-        if(partition.data.length >= 1) {
+        if( partition.data ) {
            return "Room alreiady exists"
         }
         else {
