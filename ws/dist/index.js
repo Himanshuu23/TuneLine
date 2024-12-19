@@ -97,9 +97,7 @@ function createPartition(roomCode) {
         try {
             const desiredPartition = getPartitionForRoomCode(roomCode);
             const partitionData = yield getPartitionData(roomCode);
-            console.log("this the daaata ->>>>>>", desiredPartition, partitionData);
             const partition = JSON.parse(partitionData);
-            console.log(partition, "inside the createPartition function 🥶🚣");
             if (partition.roomCode.length >= 1) {
                 return "Room alreiady exists";
             }
@@ -132,6 +130,7 @@ function getPartitionData(roomCode) {
         const desiredPartition = getPartitionForRoomCode(roomCode);
         let lastMessage = JSON.stringify({ roomCode: "", queue: [], user: "" });
         yield consumer.subscribe({ topic: TOPIC, fromBeginning: true });
+        new Promise(resolve => setTimeout(resolve, 2000));
         yield consumer.run({
             eachMessage: (_a) => __awaiter(this, [_a], void 0, function* ({ partition, message }) {
                 if (partition === desiredPartition) {

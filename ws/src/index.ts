@@ -126,9 +126,7 @@ async function createPartition(roomCode:string) {
     try {
         const desiredPartition = getPartitionForRoomCode(roomCode);
         const partitionData = await getPartitionData(roomCode)
-        console.log("this the daaata ->>>>>>", desiredPartition, partitionData);
         const partition:dataType = JSON.parse(partitionData);
-        console.log(partition, "inside the createPartition function 🥶🚣")
         if( partition.roomCode.length >= 1 ) {
            return "Room alreiady exists"
         }
@@ -153,17 +151,19 @@ async function createPartition(roomCode:string) {
 }
 
 async function getPartitionData(roomCode: string): Promise<string> {
-    const consumer = kafka.consumer({ groupId: "something" });
+    const consumer = kafka.consumer({ groupId: "something" })
     await consumer.connect();
 
     const desiredPartition = getPartitionForRoomCode(roomCode);
-    let lastMessage = JSON.stringify({ roomCode: "", queue: [], user: "" });
+    let lastMessage = JSON.stringify({ roomCode: "", queue: [], user: "" })
 
     await consumer.subscribe({ topic: TOPIC, fromBeginning: true });
 
+    new Promise(resolve => setTimeout(resolve, 2000))
+
     await consumer.run({
-        eachMessage: async ({ partition, message }: {partition: number, message: KafkaMessage}) => {
-            if (partition === desiredPartition  ) {
+        eachMessage: async ({partition, message}: {partition:number, message: KafkaMessage}) => {
+            if(partition === desiredPartition) {
                 lastMessage = message.value ? JSON.parse(message.value.toString()) : lastMessage;
             }
         }

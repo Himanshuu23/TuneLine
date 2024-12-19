@@ -61,7 +61,7 @@ export default function Navbar() {
         <div className="flex justify-between gap-6">
           <Input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Join using Code" />
           <Button variant="secondary" onClick={() => joinRoom(input, session?.user?.email || "")}>Join</Button>
-          <Button variant="destructive" onClick={() => createRoom(session?.user?.email || "")}>Create Container</Button>
+          <Button variant="destructive" onClick={() => createRoom(session?.user?.email || "")}>Create Room</Button>
         </div>
         <div>
           <LoginDialog />

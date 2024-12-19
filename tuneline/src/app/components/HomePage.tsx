@@ -1,18 +1,12 @@
 import Footer from "./Footer"
+import Hero from "./Hero"
 import Navbar from "./Nav"
 
 export default function HomePage() {
   return (
     <div className="flex flex-col">
       <Navbar />
-      <div className="flex">
-        <div>
-            Viewers play songs
-        </div>
-        <div>
-            Queue Picture
-        </div>
-      </div>
+      <Hero />
       <div>
         Video to get started for the same
       </div>

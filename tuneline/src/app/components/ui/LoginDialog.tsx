@@ -30,7 +30,7 @@ export default function LoginDialog() {
   
   <Dialog>
       <DialogTrigger> 
-       Login
+        Login
       </DialogTrigger>
       <DialogContent>
       <DialogHeader>
