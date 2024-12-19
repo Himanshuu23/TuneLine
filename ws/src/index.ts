@@ -76,7 +76,7 @@ async function admin() {
 }
 
 async function producer(roomCode: string, data: dataType) { // -> data would be of the type push(ROOMS, { roomCode: code, room: [], queue: [], admin });
-
+    console.log("inside the producer function")
     const producer = kafka.producer();
     const partition = getPartitionForRoomCode(roomCode);
 
@@ -158,25 +158,41 @@ async function getPartitionData(roomCode: string): Promise<string> {
     let lastMessage = JSON.stringify({ roomCode: "", queue: [], user: "" })
 
     await consumer.subscribe({ topic: TOPIC, fromBeginning: true });
+    
+    return new Promise((resolve, reject) => {
+        let resolved = false;
 
-    new Promise(resolve => setTimeout(resolve, 2000))
+        consumer.run({
+            eachMessage: async ({ partition, message}: { partition:number, message:KafkaMessage }) => {
+                if (partition === desiredPartition) {
+                    lastMessage = message.value?.toString() || lastMessage;
+                    if(!resolved) {
+                        resolved = true;
+                        await consumer.disconnect();
+                        resolve(lastMessage);
+                    }
+                }
+            },
+        }).catch(async (err) => {
+                await consumer.disconnect()
+                reject(err);
+        });
 
-    await consumer.run({
-        eachMessage: async ({partition, message}: {partition:number, message: KafkaMessage}) => {
-            if(partition === desiredPartition) {
-                lastMessage = message.value ? JSON.parse(message.value.toString()) : lastMessage;
+        setTimeout(async () => {
+            if (!resolved) {
+                resolved = true;
+                await consumer.disconnect();
+                resolve(lastMessage);
             }
-        }
+        }, 3000);
     })
-
-    await consumer.disconnect();
-    return lastMessage;
 }        
 
 async function makeNewRoom(admin: string): Promise<string> { // returns string -> roomCode
   let code = Math.random().toString(36).substring(2, 8);
   const response = await createPartition(code)
   producer(code, { roomCode: code, queue: [], user: admin });
+  console.log(response);
   return response;
 }
 

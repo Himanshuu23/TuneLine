@@ -53,6 +53,7 @@ function admin() {
 }
 function producer(roomCode, data) {
     return __awaiter(this, void 0, void 0, function* () {
+        console.log("inside the producer function");
         const producer = kafka.producer();
         const partition = getPartitionForRoomCode(roomCode);
         console.log("Connecting Producer...");
@@ -130,16 +131,32 @@ function getPartitionData(roomCode) {
         const desiredPartition = getPartitionForRoomCode(roomCode);
         let lastMessage = JSON.stringify({ roomCode: "", queue: [], user: "" });
         yield consumer.subscribe({ topic: TOPIC, fromBeginning: true });
-        new Promise(resolve => setTimeout(resolve, 2000));
-        yield consumer.run({
-            eachMessage: (_a) => __awaiter(this, [_a], void 0, function* ({ partition, message }) {
-                if (partition === desiredPartition) {
-                    lastMessage = message.value ? JSON.parse(message.value.toString()) : lastMessage;
+        return new Promise((resolve, reject) => {
+            let resolved = false;
+            consumer.run({
+                eachMessage: (_a) => __awaiter(this, [_a], void 0, function* ({ partition, message }) {
+                    var _b;
+                    if (partition === desiredPartition) {
+                        lastMessage = ((_b = message.value) === null || _b === void 0 ? void 0 : _b.toString()) || lastMessage;
+                        if (!resolved) {
+                            resolved = true;
+                            yield consumer.disconnect();
+                            resolve(lastMessage);
+                        }
+                    }
+                }),
+            }).catch((err) => __awaiter(this, void 0, void 0, function* () {
+                yield consumer.disconnect();
+                reject(err);
+            }));
+            setTimeout(() => __awaiter(this, void 0, void 0, function* () {
+                if (!resolved) {
+                    resolved = true;
+                    yield consumer.disconnect();
+                    resolve(lastMessage);
                 }
-            })
+            }), 3000);
         });
-        yield consumer.disconnect();
-        return lastMessage;
     });
 }
 function makeNewRoom(admin) {
@@ -147,6 +164,7 @@ function makeNewRoom(admin) {
         let code = Math.random().toString(36).substring(2, 8);
         const response = yield createPartition(code);
         producer(code, { roomCode: code, queue: [], user: admin });
+        console.log(response);
         return response;
     });
 }
