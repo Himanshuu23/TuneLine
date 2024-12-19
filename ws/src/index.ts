@@ -3,6 +3,7 @@ require('dotenv').config()
 import express from "express";
 import { WebSocketServer } from "ws";
 import { Kafka, KafkaMessage } from "kafkajs";
+import { Wallet } from "ethers";
 
 declare global {
     interface String {
@@ -59,20 +60,24 @@ async function admin() {
     console.log("Admin Connected!");
 
     console.log("Creating Topic...")
-    await admin.createTopics({
+    try {
+        await admin.createTopics({
 
-       topics: [ 
-        {        
-            topic: TOPIC,
-            numPartitions: 1,
-        },
-       ]
-    });
-    console.log("Topic Created!");
-
-    console.log("Disconnecting admin...");
-    await admin.disconnect();
-    console.log("Admin Disconnected");
+            topics: [ 
+                {        
+                    topic: TOPIC,
+                    numPartitions: 1,
+                },
+            ]
+        });
+        console.log("Topic Created!");
+    } catch(error) {
+        console.log(error)
+    } finally {
+        console.log("Disconnecting admin...");
+        await admin.disconnect();
+        console.log("Admin Disconnected");
+    }
 }
 
 async function producer(roomCode: string, data: dataType) { // -> data would be of the type push(ROOMS, { roomCode: code, room: [], queue: [], admin });
@@ -83,15 +88,19 @@ async function producer(roomCode: string, data: dataType) { // -> data would be 
     console.log("Connecting Producer...")
     await producer.connect();
     console.log("Producer Connected!")
-
-    await producer.send({
-        topic: TOPIC,
-        messages: [
+    try {
+        await producer.send({
+            topic: TOPIC,
+            messages: [
             { key: "song", value: JSON.stringify(data), partition: partition }
-        ]
-    })
-
-    await producer.disconnect();
+            ]
+        })
+        console.log("Message sent!", data)
+    } catch (error) {
+        console.log(error)
+    } finally {
+        await producer.disconnect();
+    }
 }
 
 async function consumer() {
@@ -100,11 +109,15 @@ async function consumer() {
     
     await consumer.subscribe({ topics: ["music-queues"], fromBeginning: true })
 
-    await consumer.run({
-        eachMessage: async ({ message}: {message: KafkaMessage}) => {
-            console.log(`Message: ${message.value?.toString()}`)
-        },
-    });
+    try {
+        await consumer.run({
+            eachMessage: async ({ message}: {message: KafkaMessage}) => {
+                console.log(`Message: ${message.value?.toString()}`)
+            },
+        });
+    } catch(error) {
+        console.error(error)
+    }
 }
 
 String.prototype.hashCode = function () {
@@ -169,11 +182,12 @@ async function getPartitionData(roomCode: string): Promise<string> {
                     if(!resolved) {
                         resolved = true;
                         await consumer.disconnect();
+                        console.log("Fetched Partition Data", lastMessage);
                         resolve(lastMessage);
                     }
                 }
             },
-        }).catch(async (err) => {
+        }).catch(async (err:Error) => {
                 await consumer.disconnect()
                 reject(err);
         });
@@ -186,7 +200,8 @@ async function getPartitionData(roomCode: string): Promise<string> {
             }
         }, 3000);
     })
-}        
+}
+
 
 async function makeNewRoom(admin: string): Promise<string> { // returns string -> roomCode
   let code = Math.random().toString(36).substring(2, 8);
@@ -204,15 +219,22 @@ async function joinRoom(roomCode: string, username: string): Promise<string> { /
         topic: TOPIC,
         fromBeginning: true
     })
-    await consumer.run({
-        eachMessage: async ({ partition, message }: { partition: number, message: KafkaMessage }) => {
-            if (partition === partitionIndex) {
-                console.log("Recieved Message", message.value?.toString())
+    
+    try {
+        await consumer.run({
+            eachMessage: async ({ partition, message }: { partition: number, message: KafkaMessage }) => {
+                if (partition === partitionIndex) {
+                    console.log("Recieved Message", message.value?.toString())
+                }
             }
-        }
-    })
-    await consumer.disconnect()
-    return `${username} joined the room!`
+        })
+    } catch(error){
+        console.log(error)
+        return JSON.stringify(error)
+    } finally {
+        await consumer.disconnect()
+        return `${username} joined the room!`
+    }
 }
 
 async function insertMusicIntoQueue(roomCode:string, music: musicType, user: string): Promise<string> { // the response would be like this guy added this music 
@@ -221,11 +243,16 @@ async function insertMusicIntoQueue(roomCode:string, music: musicType, user: str
         
     const newMessage = JSON.parse(await getPartitionData(roomCode))
     console.log(newMessage) 
-    newMessage.queue.push(music)
-
-    producer(roomCode, newMessage)
-    await admin.disconnect()
-    return `${user} added the song ${music.youtubeUrl} into the queue! vote it to play`
+    newMessage.queue = [...newMessage.queue, music]
+    try {
+        producer(roomCode, newMessage)
+        console.log("Updated Message to Producer", newMessage)
+    } catch (error) {
+        return JSON.stringify(error);
+    } finally {
+        await admin.disconnect()
+        return `${user} added the song ${music.youtubeUrl} into the queue! vote it to play`
+    }
 }
 
 async function deleteMusicFromQueue(roomCode: string, music: musicType): Promise<string> { // this is if some user adds an inappropriate song inside the queue so the admin can remove the song directly from the queue, admin removed the music -> maybe donot show the music deleted by the admin on the UI since this would be bad for the streamer
@@ -235,42 +262,54 @@ async function deleteMusicFromQueue(roomCode: string, music: musicType): Promise
    const newMessage = JSON.parse(await getPartitionData(roomCode))
    newMessage.queue.filter((song:musicType) => song !== music);
 
-   producer(roomCode, newMessage);
-   await admin.disconnect()
-   return "admin deleted the song for the same"
+   try {
+    producer(roomCode, newMessage);
+   } catch (error) {
+    console.log(error)
+    return JSON.stringify(error);
+   } finally {
+    await admin.disconnect()
+   }
+    return "admin deleted the song for the same"
 }
 
 async function getSongs(roomCode :string) { // we have to get all the sons from the room using the roomCode and return those
-    const admin = kafka.admin();
-    await admin.connect();
-
-    const message = JSON.parse(await getPartitionData(roomCode));
-
-    await admin.disconnect()
-    return message.queue
+    try {
+      const message = JSON.parse(await getPartitionData(roomCode));
+      return message.queue
+    } catch(error){
+      console.error(error)
+      return error
+    }
 }
 
 async function voteSong(roomCode: string, url:string) { // just increase the vote and return the following user voted the followin song
-    const admin = kafka.admin();
-    await admin.connect();
-
-    const message = JSON.parse(await getPartitionData(roomCode));
-    const newMessage = JSON.parse(message);
-    const newQueue = newMessage.queue.map((song:musicType) => {
-        if (song.youtubeUrl === url) {
-            song.votes + 1
+    try {
+        const message = JSON.parse(await getPartitionData(roomCode));
+        const newMessage = JSON.parse(message);
+        const newQueue = newMessage.queue.map((song:musicType) => {
+            if (song.youtubeUrl === url) {
+                song.votes += 1
+                return song
+            }
             return song
-        }
-        return song
-    })
-    newMessage.queue = newQueue
-    producer(roomCode, newMessage)
-    await admin.disconnect()
+        })
+        newMessage.queue = newQueue
+        producer(roomCode, newMessage)
+    } catch (error) {
+        console.log(error)
+        return JSON.stringify(error)
+    }
 }
 
 async function closeRoom(roomCode: string): Promise<string> { // just close the room and show the response back to the admin for the same and remove the data for the following partition from the queue
-    producer(roomCode, { roomCode: "", queue: [], user: "" })
-    return `Room Closed!`
+    try {
+        producer(roomCode, { roomCode: "", queue: [], user: "" })
+        return `Room Closed!`
+    } catch (error) {
+        console.log(error)
+        return JSON.stringify(error)
+    }
 }
 
 function rateLimitByIp(ip:string):boolean {
