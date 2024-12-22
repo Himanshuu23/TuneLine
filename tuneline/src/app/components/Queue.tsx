@@ -8,8 +8,8 @@ import { MessageType } from "../types";
 
 export default function Queue() {
   const [money, setMoney] = useState<number>(0);
-  const [url, setUrl] = useState<string>("");
-  const [songs, setSongs] = useState<string[]>([]);
+  const [url, setUrl] = useState<string>();
+  const [songs, setSongs] = useState<string[]>(["someting", "sojeofj"]);
   const { data: session, status } = useSession();
  // session.user.email -> email of the user 
   const socket = useSocket();
@@ -65,22 +65,42 @@ export default function Queue() {
   }, [songs])
   
   return (
-    <div style={{transform: 'translate(-6%, -2.4%)'}} className="w-1/5 flex flex-col h-screen gap-4">
-       <div className="text-3xl border-b-2 mx-4 p-2 mt-4 border-green">Music Queue</div> {/* put some logo or something */}
-       <div className="mx-4 p-2 mb-4 h-3/5">
-        Songs Queue
-        {songs.map((song) => {
-          {return <Song song={song} />}
-        })}
+    <div
+      style={{
+        transform: 'translate(-6%, -2.4%)',
+      }}
+      className="w-1/5 flex flex-col h-screen gap-4 bg-black p-4 shadow-lg rounded-lg"
+    >
+      <div className="mx-4 mb-4 h-full overflow-y-auto rounded-lg">
+        {songs.length > 0 ? (
+          songs.map((song, index) => (
+            <div
+              key={index}
+              className="flex justify-between items-center bg-gray-700 p-2 mb-2 rounded-md shadow-sm hover:bg-gray-600"
+            >
+              <span className="text-white font-medium">{song}</span>
+              <button className="text-red-500 text-sm">Remove</button>
+            </div>
+          ))
+        ) : (
+          <div className="text-sm text-gray-400">No songs in the queue</div>
+        )}
       </div>
-       <div className="flex flex-col">
-        <input onChange={(e) => setUrl(e.target.value)} type="text" placeholder="Enter YT Url"/> {/* make it like inside a form and on submit call add song and remove the add button and on the input for money put button with $? sign instead and if clicked open a modal -> and add payment and then done */}
-        <input onChange={(e) => setMoney(JSON.parse(e.target.value))} type="text" placeholder="Want to pay?" />
-        <button onClick={() => addSong(url, money)}>add</button>
-       </div>
+      <div className="flex items-center gap-2">
+        <input
+          onChange={(e) => setUrl(e.target.value)}
+          type="text"
+          placeholder="Enter Song Name"
+          className="flex-grow border-2 border-gray-700 p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-800 text-white"
+        />
+        <button className="bg-blue-500 text-white p-3 rounded-md hover:bg-blue-600 transition-all">
+          $
+        </button>
+      </div>
     </div>
-
-  )
+  );
+  
+  
 }
 
 {/* Make it like a container with box shadow a rectanle with some bottom-left and right radius and headphones as its cover*/}
