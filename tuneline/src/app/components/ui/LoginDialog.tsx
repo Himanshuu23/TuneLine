@@ -29,16 +29,16 @@ export default function LoginDialog() {
   return (
   
   <Dialog>
-      <DialogTrigger> 
+      <DialogTrigger className="px-4 py-2 text-sm font-medium text-gray-800 bg-gray-200 border border-gray-300 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"> 
         Login
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="bg-black flex justify-between">
       <DialogHeader>
-        <DialogTitle>Login</DialogTitle>
+        <DialogTitle className="text-3xl">Using</DialogTitle>
       </DialogHeader>
-     <div>
-        <button onClick={() => handleLogin('google')}><GoogleLogo /></button>
-        <button onClick={() => handleLogin('github')}><GithubLogo /></button>
+     <div className="flex gap-10 my-2 mr-10">
+        <button style={{transform: "scale(150%)"}} onClick={() => handleLogin('google')}><GoogleLogo /></button>
+        <button style={{transform: "scale(150%)"}} onClick={() => handleLogin('github')}><GithubLogo /></button>
     </div>
     </DialogContent>
   </Dialog>

@@ -54,13 +54,13 @@ export default function Navbar() {
   }
 
   return (
-    <div className="flex place-content-around bg-black">
-        <div className="flex justify-between gap-7 p-4">
+    <div className="flex mx-3 py-4 fixed h-13 w-full place-content-around backdrop-blur-md bg-black/50">
+        <div className="flex justify-between gap-7">
             <p>Logo</p>
         </div>
         <div className="flex justify-between gap-6">
-          <Input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Join using Code" />
-          <Button variant="secondary" onClick={() => joinRoom(input, session?.user?.email || "")}>Join</Button>
+          <Input className="border-0 focus:border focus:border-gray-300 focus:outline-none" type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Join using Code" />
+          <Button className="w-1/3" variant="secondary" onClick={() => joinRoom(input, session?.user?.email || "")}>Join</Button>
           <Button variant="destructive" onClick={() => createRoom(session?.user?.email || "")}>Create Room</Button>
         </div>
         <div>
