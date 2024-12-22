@@ -37,18 +37,25 @@ function admin() {
         yield admin.connect();
         console.log("Admin Connected!");
         console.log("Creating Topic...");
-        yield admin.createTopics({
-            topics: [
-                {
-                    topic: TOPIC,
-                    numPartitions: 1,
-                },
-            ]
-        });
-        console.log("Topic Created!");
-        console.log("Disconnecting admin...");
-        yield admin.disconnect();
-        console.log("Admin Disconnected");
+        try {
+            yield admin.createTopics({
+                topics: [
+                    {
+                        topic: TOPIC,
+                        numPartitions: 1,
+                    },
+                ]
+            });
+            console.log("Topic Created!");
+        }
+        catch (error) {
+            console.log(error);
+        }
+        finally {
+            console.log("Disconnecting admin...");
+            yield admin.disconnect();
+            console.log("Admin Disconnected");
+        }
     });
 }
 function producer(roomCode, data) {
@@ -59,13 +66,21 @@ function producer(roomCode, data) {
         console.log("Connecting Producer...");
         yield producer.connect();
         console.log("Producer Connected!");
-        yield producer.send({
-            topic: TOPIC,
-            messages: [
-                { key: "song", value: JSON.stringify(data), partition: partition }
-            ]
-        });
-        yield producer.disconnect();
+        try {
+            yield producer.send({
+                topic: TOPIC,
+                messages: [
+                    { key: "song", value: JSON.stringify(data), partition: partition }
+                ]
+            });
+            console.log("Message sent!", data);
+        }
+        catch (error) {
+            console.log(error);
+        }
+        finally {
+            yield producer.disconnect();
+        }
     });
 }
 function consumer() {
@@ -73,12 +88,17 @@ function consumer() {
         const consumer = kafka.consumer({ groupId: "something" }); // --> as we have no partition for the single topic so do i need to name the consumer-group?
         yield consumer.connect();
         yield consumer.subscribe({ topics: ["music-queues"], fromBeginning: true });
-        yield consumer.run({
-            eachMessage: (_a) => __awaiter(this, [_a], void 0, function* ({ message }) {
-                var _b;
-                console.log(`Message: ${(_b = message.value) === null || _b === void 0 ? void 0 : _b.toString()}`);
-            }),
-        });
+        try {
+            yield consumer.run({
+                eachMessage: (_a) => __awaiter(this, [_a], void 0, function* ({ message }) {
+                    var _b;
+                    console.log(`Message: ${(_b = message.value) === null || _b === void 0 ? void 0 : _b.toString()}`);
+                }),
+            });
+        }
+        catch (error) {
+            console.error(error);
+        }
     });
 }
 String.prototype.hashCode = function () {
@@ -135,14 +155,10 @@ function getPartitionData(roomCode) {
             let resolved = false;
             consumer.run({
                 eachMessage: (_a) => __awaiter(this, [_a], void 0, function* ({ partition, message }) {
-                    var _b;
+                    var _b, _c;
+                    console.log(`Partition: ${partition}, Message: ${(_b = message.value) === null || _b === void 0 ? void 0 : _b.toString()}`);
                     if (partition === desiredPartition) {
-                        lastMessage = ((_b = message.value) === null || _b === void 0 ? void 0 : _b.toString()) || lastMessage;
-                        if (!resolved) {
-                            resolved = true;
-                            yield consumer.disconnect();
-                            resolve(lastMessage);
-                        }
+                        lastMessage = ((_c = message.value) === null || _c === void 0 ? void 0 : _c.toString()) || lastMessage;
                     }
                 }),
             }).catch((err) => __awaiter(this, void 0, void 0, function* () {
@@ -177,28 +193,44 @@ function joinRoom(roomCode, username) {
             topic: TOPIC,
             fromBeginning: true
         });
-        yield consumer.run({
-            eachMessage: (_a) => __awaiter(this, [_a], void 0, function* ({ partition, message }) {
-                var _b;
-                if (partition === partitionIndex) {
-                    console.log("Recieved Message", (_b = message.value) === null || _b === void 0 ? void 0 : _b.toString());
-                }
-            })
-        });
-        yield consumer.disconnect();
-        return `${username} joined the room!`;
+        try {
+            yield consumer.run({
+                eachMessage: (_a) => __awaiter(this, [_a], void 0, function* ({ partition, message }) {
+                    var _b;
+                    if (partition === partitionIndex) {
+                        console.log("Recieved Message", (_b = message.value) === null || _b === void 0 ? void 0 : _b.toString());
+                    }
+                })
+            });
+        }
+        catch (error) {
+            console.log(error);
+            return JSON.stringify(error);
+        }
+        finally {
+            yield consumer.disconnect();
+            return `${username} joined the room!`;
+        }
     });
 }
 function insertMusicIntoQueue(roomCode, music, user) {
     return __awaiter(this, void 0, void 0, function* () {
         const admin = kafka.admin();
         yield admin.connect();
-        const newMessage = JSON.parse(yield getPartitionData(roomCode));
+        let newMessage = JSON.parse(yield getPartitionData(roomCode));
         console.log(newMessage);
-        newMessage.queue.push(music);
-        producer(roomCode, newMessage);
-        yield admin.disconnect();
-        return `${user} added the song ${music.youtubeUrl} into the queue! vote it to play`;
+        newMessage = { roomCode: roomCode, queue: [...newMessage.queue, music], user: user };
+        try {
+            producer(roomCode, newMessage);
+            console.log("Updated Message to Producer", newMessage);
+        }
+        catch (error) {
+            return JSON.stringify(error);
+        }
+        finally {
+            yield admin.disconnect();
+            return `${user} added the song ${music.youtubeUrl} into the queue! vote it to play`;
+        }
     });
 }
 function deleteMusicFromQueue(roomCode, music) {
@@ -207,42 +239,62 @@ function deleteMusicFromQueue(roomCode, music) {
         yield admin.connect();
         const newMessage = JSON.parse(yield getPartitionData(roomCode));
         newMessage.queue.filter((song) => song !== music);
-        producer(roomCode, newMessage);
-        yield admin.disconnect();
+        try {
+            producer(roomCode, newMessage);
+        }
+        catch (error) {
+            console.log(error);
+            return JSON.stringify(error);
+        }
+        finally {
+            yield admin.disconnect();
+        }
         return "admin deleted the song for the same";
     });
 }
 function getSongs(roomCode) {
     return __awaiter(this, void 0, void 0, function* () {
-        const admin = kafka.admin();
-        yield admin.connect();
-        const message = JSON.parse(yield getPartitionData(roomCode));
-        yield admin.disconnect();
-        return message.queue;
+        try {
+            const message = JSON.parse(yield getPartitionData(roomCode));
+            return message.queue;
+        }
+        catch (error) {
+            console.error(error);
+            return error;
+        }
     });
 }
 function voteSong(roomCode, url) {
     return __awaiter(this, void 0, void 0, function* () {
-        const admin = kafka.admin();
-        yield admin.connect();
-        const message = JSON.parse(yield getPartitionData(roomCode));
-        const newMessage = JSON.parse(message);
-        const newQueue = newMessage.queue.map((song) => {
-            if (song.youtubeUrl === url) {
-                song.votes + 1;
+        try {
+            const message = JSON.parse(yield getPartitionData(roomCode));
+            const newMessage = JSON.parse(message);
+            const newQueue = newMessage.queue.map((song) => {
+                if (song.youtubeUrl === url) {
+                    song.votes += 1;
+                    return song;
+                }
                 return song;
-            }
-            return song;
-        });
-        newMessage.queue = newQueue;
-        producer(roomCode, newMessage);
-        yield admin.disconnect();
+            });
+            newMessage.queue = newQueue;
+            producer(roomCode, newMessage);
+        }
+        catch (error) {
+            console.log(error);
+            return JSON.stringify(error);
+        }
     });
 }
 function closeRoom(roomCode) {
     return __awaiter(this, void 0, void 0, function* () {
-        producer(roomCode, { roomCode: "", queue: [], user: "" });
-        return `Room Closed!`;
+        try {
+            producer(roomCode, { roomCode: "", queue: [], user: "" });
+            return `Room Closed!`;
+        }
+        catch (error) {
+            console.log(error);
+            return JSON.stringify(error);
+        }
     });
 }
 function rateLimitByIp(ip) {

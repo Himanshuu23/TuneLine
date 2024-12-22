@@ -3,7 +3,6 @@ require('dotenv').config()
 import express from "express";
 import { WebSocketServer } from "ws";
 import { Kafka, KafkaMessage } from "kafkajs";
-import { Wallet } from "ethers";
 
 declare global {
     interface String {
@@ -177,14 +176,9 @@ async function getPartitionData(roomCode: string): Promise<string> {
 
         consumer.run({
             eachMessage: async ({ partition, message}: { partition:number, message:KafkaMessage }) => {
+                console.log(`Partition: ${partition}, Message: ${message.value?.toString()}`)
                 if (partition === desiredPartition) {
                     lastMessage = message.value?.toString() || lastMessage;
-                    if(!resolved) {
-                        resolved = true;
-                        await consumer.disconnect();
-                        console.log("Fetched Partition Data", lastMessage);
-                        resolve(lastMessage);
-                    }
                 }
             },
         }).catch(async (err:Error) => {
@@ -241,9 +235,9 @@ async function insertMusicIntoQueue(roomCode:string, music: musicType, user: str
     const admin = kafka.admin();
     await admin.connect();
         
-    const newMessage = JSON.parse(await getPartitionData(roomCode))
+    let newMessage = JSON.parse(await getPartitionData(roomCode))
     console.log(newMessage) 
-    newMessage.queue = [...newMessage.queue, music]
+    newMessage = {roomCode: roomCode, queue: [...newMessage.queue, music], user: user}
     try {
         producer(roomCode, newMessage)
         console.log("Updated Message to Producer", newMessage)
