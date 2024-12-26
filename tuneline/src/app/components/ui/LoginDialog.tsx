@@ -29,7 +29,7 @@ export default function LoginDialog() {
   return (
   
   <Dialog>
-      <DialogTrigger className="px-4 py-2 text-sm font-medium text-gray-800 bg-gray-200 border border-gray-300 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"> 
+      <DialogTrigger className="px-4 py-2 text-sm font-medium text-gray-800 bg-gray-200 border border-gray-300 rounded-full hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"> 
         Login
       </DialogTrigger>
       <DialogContent className="bg-black flex justify-between">

@@ -2,34 +2,42 @@ import { CheckIcon } from '@heroicons/react/20/solid'
 
 const tiers = [
   {
-    name: 'Hobby',
-    id: 'tier-hobby',
+    name: 'Free',
+    id: 'tier-free',
     href: '#',
-    priceMonthly: '$29',
-    description: "The perfect plan if you're just getting started with our product.",
-    features: ['25 products', 'Up to 10,000 subscribers', 'Advanced analytics', '24-hour support response time'],
+    priceMonthly: 'Free',
+    description: "The perfect plan for those starting with basic features.",
+    features: ['Queue up to 15 songs', "Only the song's video is visible", 'Basic chat functionality'],
     featured: false,
   },
   {
-    name: 'Enterprise',
-    id: 'tier-enterprise',
+    name: 'Pro',
+    id: 'tier-pro',
     href: '#',
-    priceMonthly: '$99',
-    description: 'Dedicated support and infrastructure for your company.',
+    priceMonthly: '$59',
+    description: 'A comprehensive plan for professionals and top-tier users.',
     features: [
-      'Unlimited products',
-      'Unlimited subscribers',
-      'Advanced analytics',
-      'Dedicated support representative',
-      'Marketing automations',
-      'Custom integrations',
+      'Queue up to 75 songs',
+      'Full streamer interaction',
+      'Enhanced chat options',
+      'Exclusive features',
     ],
     featured: true,
   },
+  {
+    name: 'Plus',
+    id: 'tier-plus',
+    href: '#',
+    priceMonthly: '$30',
+    description: 'Enhanced features for more engagement and better experience.',
+    features: ['Queue up to 35 songs', "View the streamer’s stream + song's video", 'Advanced chat options'],
+    featured: false,
+  },
 ]
 
+
 function classNames(...classes: (string | boolean | undefined | null)[]): string {
-    return classes.filter(Boolean).join(' ');
+  return classes.filter(Boolean).join(' ');
 }
 
 export default function Pricing() {
@@ -45,15 +53,14 @@ export default function Pricing() {
         />
       </div>
       <div className="mx-auto max-w-4xl text-center">
-        <p className="mt-2 text-balance text-5xl font-semibold tracking-tight text-gray-900 sm:text-6xl">
+        <p className="mt-2 text-balance text-5xl font-semibold tracking-tight sm:text-6xl">
           Choose the right plan for you
         </p>
       </div>
-      <p className="mx-auto mt-6 max-w-2xl text-pretty text-center text-lg font-medium text-gray-600 sm:text-xl/8">
-        Choose an affordable plan that’s packed with the best features for engaging your audience, creating customer
-        loyalty, and driving sales.
+      <p className="mx-auto mt-6 max-w-2xl text-pretty text-center text-lg font-medium text-gray-400 sm:text-xl/8">
+      Choose an affordable plan that’s packed with the best features for enhancing streams, engaging viewers, and boosting fun.
       </p>
-      <div className="mx-auto mt-16 grid max-w-lg grid-cols-1 items-center gap-y-6 sm:mt-20 sm:gap-y-0 lg:max-w-4xl lg:grid-cols-2">
+      <div className="mx-auto mt-16 grid max-w-[60rem] grid-cols-1 items-center gap-y-6 sm:mt-20 sm:gap-y-0 lg:max-w-[80rem] lg:grid-cols-3">
         {tiers.map((tier, tierIdx) => (
           <div
             key={tier.id}

@@ -54,19 +54,24 @@ export default function Navbar() {
   }
 
   return (
-    <div className="flex mx-3 py-4 fixed h-13 w-full place-content-around backdrop-blur-md bg-black/50">
-        <div className="flex justify-between gap-7">
-            <p>Logo</p>
-        </div>
-        <div className="flex justify-between gap-6">
-          <Input className="border-0 focus:border focus:border-gray-300 focus:outline-none" type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Join using Code" />
-          <Button className="w-1/3" variant="secondary" onClick={() => joinRoom(input, session?.user?.email || "")}>Join</Button>
-          <Button variant="destructive" onClick={() => createRoom(session?.user?.email || "")}>Create Room</Button>
-        </div>
-        <div>
-          <LoginDialog />
-        </div>
+    <div className="flex mr-3 py-4 px-6 fixed top-0 left-0 right-0 z-50 h-16 justify-between backdrop-blur-md">
+      <div className="flex justify-between gap-7">
+        <p className="text-white text-3xl font-semibold select-none">🎶</p>
+      </div>
+      <div className="flex justify-between gap-6">
+        <Input className="placeholder:text-gray-200 rounded-full border-2 border-gray-300 focus:border focus:border-gray-300 focus:outline-none" 
+          type="text" 
+          value={input} 
+          onChange={(e) => setInput(e.target.value)} 
+          placeholder="Join using Code" 
+        />
+        <Button className="w-1/3 rounded-full" variant="secondary" onClick={() => joinRoom(input, session?.user?.email || "")}>Join</Button>
+        <Button className="rounded-full" onClick={() => createRoom(session?.user?.email || "")}>Create Room</Button>
+      </div>
+      <div>
+        <LoginDialog />
+      </div>
     </div>
-  )
+  );
+  
 }
-// Logo - some tune like icon like tiktok
