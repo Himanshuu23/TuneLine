@@ -65,42 +65,60 @@ export default function Queue() {
   }, [songs])
   
   return (
-    <div
-      style={{
-        transform: 'translate(-6%, -2.4%)',
-      }}
-      className="w-1/5 flex flex-col h-screen gap-4 bg-black p-4 shadow-lg rounded-lg"
-    >
-      <div className="mx-4 mb-4 h-full overflow-y-auto rounded-lg">
-        {songs.length > 0 ? (
-          songs.map((song, index) => (
-            <div
-              key={index}
-              className="flex justify-between items-center bg-gray-700 p-2 mb-2 rounded-md shadow-sm hover:bg-gray-600"
-            >
-              <span className="text-white font-medium">{song}</span>
-              <button className="text-red-500 text-sm">Remove</button>
-            </div>
-          ))
-        ) : (
-          <div className="text-sm text-gray-400">No songs in the queue</div>
-        )}
+  <div className="w-1/3 bg-black p-6 rounded-lg shadow-lg">
+  <h2 className="text-xl font-bold text-white mb-4">Our Upcoming Events</h2>
+  <div className="space-y-4">
+    <div className="flex items-center justify-between bg-gray-800 p-4 rounded-md shadow-md">
+      <div className="flex items-center">
+        <span className="text-red-500 font-bold text-lg mr-4">07</span>
+        <div>
+          <h3 className="text-white font-semibold">Shangela Shuffle: Desert Edition</h3>
+          <p className="text-gray-400 text-sm">Live At Coca-Cola Arena</p>
+        </div>
       </div>
-      <div className="flex items-center gap-2">
-        <input
-          onChange={(e) => setUrl(e.target.value)}
-          type="text"
-          placeholder="Enter Song Name"
-          className="flex-grow border-2 border-gray-700 p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-800 text-white"
-        />
-        <button className="bg-blue-500 text-white p-3 rounded-md hover:bg-blue-600 transition-all">
-          $
-        </button>
-      </div>
+      <button className="text-sm font-bold text-red-500 border border-red-500 px-4 py-2 rounded-full hover:bg-red-500 hover:text-white">
+        Book Now
+      </button>
     </div>
-  );
-  
-  
+    <div className="flex items-center justify-between bg-gray-800 p-4 rounded-md shadow-md">
+      <div className="flex items-center">
+        <span className="text-red-500 font-bold text-lg mr-4">10</span>
+        <div>
+          <h3 className="text-white font-semibold">Amr Diab</h3>
+          <p className="text-gray-400 text-sm">Live At Etihad Arena</p>
+        </div>
+      </div>
+      <button className="text-sm font-bold text-red-500 border border-red-500 px-4 py-2 rounded-full hover:bg-red-500 hover:text-white">
+        Book Now
+      </button>
+    </div>
+    <div className="flex items-center justify-between bg-gray-800 p-4 rounded-md shadow-md">
+      <div className="flex items-center">
+        <span className="text-red-500 font-bold text-lg mr-4">25</span>
+        <div>
+          <h3 className="text-white font-semibold">The Ocean</h3>
+          <p className="text-gray-400 text-sm">Live At Coca-Cola Arena</p>
+        </div>
+      </div>
+      <button className="text-sm font-bold text-red-500 border border-red-500 px-4 py-2 rounded-full hover:bg-red-500 hover:text-white">
+        Book Now
+      </button>
+    </div>
+    <div className="flex items-center justify-between bg-gray-800 p-4 rounded-md shadow-md">
+      <div className="flex items-center">
+        <span className="text-red-500 font-bold text-lg mr-4">05</span>
+        <div>
+          <h3 className="text-white font-semibold">Cigarettes After Sex</h3>
+          <p className="text-gray-400 text-sm">Live At Etihad Arena</p>
+        </div>
+      </div>
+      <button className="text-sm font-bold text-red-500 border border-red-500 px-4 py-2 rounded-full hover:bg-red-500 hover:text-white">
+        Book Now
+      </button>
+    </div>
+  </div>
+</div>
+  )
 }
 
 {/* Make it like a container with box shadow a rectanle with some bottom-left and right radius and headphones as its cover*/}

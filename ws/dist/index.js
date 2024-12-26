@@ -12,306 +12,30 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-require('dotenv').config();
-// INSIDE THE ADMIN FUNCTION MAKE IT LIKE -> SWITCH AND ACCEPT REQUEST TYPE AND SWITCH IT LIKE DELETE-SONG, MAKE-ROOM AND THEN DO THE THING WITH THAT --> WOULD AVIOD DOING ADMIN = KAFKA.ADMIN() MULTIPLE TIMES FOR THE SAME
 const express_1 = __importDefault(require("express"));
 const ws_1 = require("ws");
-const kafkajs_1 = require("kafkajs");
-// PayPal payments and youtubeAPi part -> on the frontend -> the song returned by getSongs, addSongs -> use its ytUrl and send that to the ytApi 
 let USERS = [];
+let ROOMS = {};
 const app = (0, express_1.default)();
 const httpServer = app.listen(11011, () => {
     console.log(`Server Started at PORT:${11011}`);
 });
 const wss = new ws_1.WebSocketServer({ server: httpServer });
-const kafka = new kafkajs_1.Kafka({
-    clientId: "tune-line",
-    brokers: ["192.168.29.23:9092"],
-});
-const numPartitons = 50; // planning to keep these 200
-const TOPIC = "music-queues";
-function admin() {
-    return __awaiter(this, void 0, void 0, function* () {
-        const admin = kafka.admin(); // -> make it as well a global variable as it is being used everywhere
-        console.log("Admin connecting...");
-        yield admin.connect();
-        console.log("Admin Connected!");
-        console.log("Creating Topic...");
-        try {
-            yield admin.createTopics({
-                topics: [
-                    {
-                        topic: TOPIC,
-                        numPartitions: 1,
-                    },
-                ]
-            });
-            console.log("Topic Created!");
-        }
-        catch (error) {
-            console.log(error);
-        }
-        finally {
-            console.log("Disconnecting admin...");
-            yield admin.disconnect();
-            console.log("Admin Disconnected");
-        }
-    });
-}
-function producer(roomCode, data) {
-    return __awaiter(this, void 0, void 0, function* () {
-        console.log("inside the producer function");
-        const producer = kafka.producer();
-        const partition = getPartitionForRoomCode(roomCode);
-        console.log("Connecting Producer...");
-        yield producer.connect();
-        console.log("Producer Connected!");
-        try {
-            yield producer.send({
-                topic: TOPIC,
-                messages: [
-                    { key: "song", value: JSON.stringify(data), partition: partition }
-                ]
-            });
-            console.log("Message sent!", data);
-        }
-        catch (error) {
-            console.log(error);
-        }
-        finally {
-            yield producer.disconnect();
-        }
-    });
-}
-function consumer() {
-    return __awaiter(this, void 0, void 0, function* () {
-        const consumer = kafka.consumer({ groupId: "something" }); // --> as we have no partition for the single topic so do i need to name the consumer-group?
-        yield consumer.connect();
-        yield consumer.subscribe({ topics: ["music-queues"], fromBeginning: true });
-        try {
-            yield consumer.run({
-                eachMessage: (_a) => __awaiter(this, [_a], void 0, function* ({ message }) {
-                    var _b;
-                    console.log(`Message: ${(_b = message.value) === null || _b === void 0 ? void 0 : _b.toString()}`);
-                }),
-            });
-        }
-        catch (error) {
-            console.error(error);
-        }
-    });
-}
-String.prototype.hashCode = function () {
-    let hash = 0;
-    for (let i = 0; i < this.length; i++) {
-        hash = (hash << 5) - hash + this.charCodeAt(i);
-    }
-    return hash;
-};
-function getPartitionForRoomCode(roomCode) {
-    return Math.abs(roomCode.hashCode()) % numPartitons;
-}
-function createPartition(roomCode) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const admin = kafka.admin();
-        yield admin.connect();
-        try {
-            const desiredPartition = getPartitionForRoomCode(roomCode);
-            const partitionData = yield getPartitionData(roomCode);
-            const partition = JSON.parse(partitionData);
-            if (partition.roomCode.length >= 1) {
-                return "Room alreiady exists";
-            }
-            else {
-                yield admin.createPartitions({
-                    topicPartitions: [
-                        {
-                            topic: TOPIC,
-                            count: desiredPartition
-                        },
-                    ]
-                });
-                console.log("room created", roomCode, "inside the createPartiton function");
-                return roomCode;
-            }
-        }
-        catch (error) {
-            console.log(error);
-            return JSON.stringify(error);
-        }
-        finally {
-            yield admin.disconnect();
-        }
-    });
-}
-function getPartitionData(roomCode) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const consumer = kafka.consumer({ groupId: "something" });
-        yield consumer.connect();
-        const desiredPartition = getPartitionForRoomCode(roomCode);
-        let lastMessage = JSON.stringify({ roomCode: "", queue: [], user: "" });
-        yield consumer.subscribe({ topic: TOPIC, fromBeginning: true });
-        return new Promise((resolve, reject) => {
-            let resolved = false;
-            consumer.run({
-                eachMessage: (_a) => __awaiter(this, [_a], void 0, function* ({ partition, message }) {
-                    var _b, _c;
-                    console.log(`Partition: ${partition}, Message: ${(_b = message.value) === null || _b === void 0 ? void 0 : _b.toString()}`);
-                    if (partition === desiredPartition) {
-                        lastMessage = ((_c = message.value) === null || _c === void 0 ? void 0 : _c.toString()) || lastMessage;
-                    }
-                }),
-            }).catch((err) => __awaiter(this, void 0, void 0, function* () {
-                yield consumer.disconnect();
-                reject(err);
-            }));
-            setTimeout(() => __awaiter(this, void 0, void 0, function* () {
-                if (!resolved) {
-                    resolved = true;
-                    yield consumer.disconnect();
-                    resolve(lastMessage);
-                }
-            }), 3000);
-        });
-    });
-}
-function makeNewRoom(admin) {
-    return __awaiter(this, void 0, void 0, function* () {
-        let code = Math.random().toString(36).substring(2, 8);
-        const response = yield createPartition(code);
-        producer(code, { roomCode: code, queue: [], user: admin });
-        console.log(response);
-        return response;
-    });
-}
-function joinRoom(roomCode, username) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const consumer = kafka.consumer({ groupId: "something" });
-        const partitionIndex = getPartitionForRoomCode(roomCode);
-        yield consumer.connect();
-        yield consumer.subscribe({
-            topic: TOPIC,
-            fromBeginning: true
-        });
-        try {
-            yield consumer.run({
-                eachMessage: (_a) => __awaiter(this, [_a], void 0, function* ({ partition, message }) {
-                    var _b;
-                    if (partition === partitionIndex) {
-                        console.log("Recieved Message", (_b = message.value) === null || _b === void 0 ? void 0 : _b.toString());
-                    }
-                })
-            });
-        }
-        catch (error) {
-            console.log(error);
-            return JSON.stringify(error);
-        }
-        finally {
-            yield consumer.disconnect();
-            return `${username} joined the room!`;
-        }
-    });
-}
-function insertMusicIntoQueue(roomCode, music, user) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const admin = kafka.admin();
-        yield admin.connect();
-        let newMessage = JSON.parse(yield getPartitionData(roomCode));
-        console.log(newMessage);
-        newMessage = { roomCode: roomCode, queue: [...newMessage.queue, music], user: user };
-        try {
-            producer(roomCode, newMessage);
-            console.log("Updated Message to Producer", newMessage);
-        }
-        catch (error) {
-            return JSON.stringify(error);
-        }
-        finally {
-            yield admin.disconnect();
-            return `${user} added the song ${music.youtubeUrl} into the queue! vote it to play`;
-        }
-    });
-}
-function deleteMusicFromQueue(roomCode, music) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const admin = kafka.admin();
-        yield admin.connect();
-        const newMessage = JSON.parse(yield getPartitionData(roomCode));
-        newMessage.queue.filter((song) => song !== music);
-        try {
-            producer(roomCode, newMessage);
-        }
-        catch (error) {
-            console.log(error);
-            return JSON.stringify(error);
-        }
-        finally {
-            yield admin.disconnect();
-        }
-        return "admin deleted the song for the same";
-    });
-}
-function getSongs(roomCode) {
-    return __awaiter(this, void 0, void 0, function* () {
-        try {
-            const message = JSON.parse(yield getPartitionData(roomCode));
-            return message.queue;
-        }
-        catch (error) {
-            console.error(error);
-            return error;
-        }
-    });
-}
-function voteSong(roomCode, url) {
-    return __awaiter(this, void 0, void 0, function* () {
-        try {
-            const message = JSON.parse(yield getPartitionData(roomCode));
-            const newMessage = JSON.parse(message);
-            const newQueue = newMessage.queue.map((song) => {
-                if (song.youtubeUrl === url) {
-                    song.votes += 1;
-                    return song;
-                }
-                return song;
-            });
-            newMessage.queue = newQueue;
-            producer(roomCode, newMessage);
-        }
-        catch (error) {
-            console.log(error);
-            return JSON.stringify(error);
-        }
-    });
-}
-function closeRoom(roomCode) {
-    return __awaiter(this, void 0, void 0, function* () {
-        try {
-            producer(roomCode, { roomCode: "", queue: [], user: "" });
-            return `Room Closed!`;
-        }
-        catch (error) {
-            console.log(error);
-            return JSON.stringify(error);
-        }
-    });
-}
 function rateLimitByIp(ip) {
     let toBeRateLimited = false;
     USERS.forEach((user) => {
         if (user.ip === ip) {
             const currentTime = Date.now();
             if (currentTime - user.time >= 600000) {
-                USERS.filter((user) => user.ip !== ip);
+                USERS = USERS.filter((user) => user.ip !== ip);
                 toBeRateLimited = false;
             }
             else {
                 if (user.count < 10) {
+                    user.count += 1;
                     toBeRateLimited = false;
                 }
                 else {
-                    user.count += 1;
                     toBeRateLimited = true;
                 }
             }
@@ -323,67 +47,131 @@ function rateLimitByIp(ip) {
     });
     return toBeRateLimited;
 }
+function makeNewRoom(admin) {
+    return __awaiter(this, void 0, void 0, function* () {
+        let code = Math.random().toString(36).substring(2, 8);
+        ROOMS[code] = { roomCode: code, queue: [], user: admin };
+        return code;
+    });
+}
+function joinRoom(roomCode, username, socket) {
+    return __awaiter(this, void 0, void 0, function* () {
+        if (ROOMS[roomCode]) {
+            socket.roomCode = roomCode;
+            return `${username} joined the room!`;
+        }
+        return "Room not found!";
+    });
+}
+function insertMusicIntoQueue(roomCode, music, user) {
+    return __awaiter(this, void 0, void 0, function* () {
+        if (ROOMS[roomCode]) {
+            const queue = ROOMS[roomCode].queue;
+            const existingMusicIndex = queue.findIndex((song) => song.youtubeUrl === music.youtubeUrl);
+            if (existingMusicIndex !== -1) {
+                queue[existingMusicIndex].votes = music.votes;
+            }
+            else {
+                queue.push(music);
+            }
+            return `${user} added the song ${music.youtubeUrl} into the queue! vote it to play`;
+        }
+        return "Room not found!";
+    });
+}
+function deleteMusicFromQueue(roomCode, music) {
+    return __awaiter(this, void 0, void 0, function* () {
+        if (ROOMS[roomCode]) {
+            ROOMS[roomCode].queue = ROOMS[roomCode].queue.filter((song) => song.youtubeUrl !== music.youtubeUrl);
+            return "admin deleted the song";
+        }
+        return "Room not found!";
+    });
+}
+function getSongs(roomCode) {
+    return __awaiter(this, void 0, void 0, function* () {
+        if (ROOMS[roomCode]) {
+            const songs = ROOMS[roomCode].queue.map((music) => music.youtubeUrl).join(", ");
+            return songs;
+        }
+        return "No songs found or Room not found!";
+    });
+}
+function closeRoom(roomCode) {
+    return __awaiter(this, void 0, void 0, function* () {
+        if (ROOMS[roomCode]) {
+            delete ROOMS[roomCode];
+            return `Room Closed!`;
+        }
+        return "Room not found!";
+    });
+}
 wss.on("connection", (socket, request) => {
     var _a;
     console.log("WebSocket Connection established!");
-    admin();
     socket.on("error", console.error);
     const ip = ((_a = request.socket.remoteAddress) === null || _a === void 0 ? void 0 : _a.replace(/^::ffff:/, '')) || "";
     const dontLetHimGo = rateLimitByIp(ip);
     if (dontLetHimGo) {
-        // user has the money then also let him go -> donot increase the counter -> they can send infinite request with money but no money increases the counter and all
-    }
-    else if (dontLetHimGo) {
         socket.send(JSON.stringify({ type: "rate-limited", message: "Honey! You have been rate limited. Please try again after a while." }));
     }
     else {
         socket.on("message", (data) => __awaiter(void 0, void 0, void 0, function* () {
             const message = JSON.parse(data.toString());
-            let admin, roomCode, username, response, url, music;
+            let admin, roomCode, username, response, music;
             switch (message.type) {
                 case "make-room":
                     admin = message.username;
                     roomCode = yield makeNewRoom(admin);
-                    socket.send(JSON.stringify({ type: "make-room", message: "created-room", roomCode: roomCode }));
+                    response = yield joinRoom(roomCode, admin, socket);
+                    socket.send(JSON.stringify({ type: "make-room", message: "created-room", roomCode: roomCode, response: response }));
                     break;
                 case "join-room":
                     roomCode = message.roomCode;
                     username = message.username;
-                    response = yield joinRoom(roomCode, username);
+                    response = yield joinRoom(roomCode, username, socket);
                     socket.send(JSON.stringify({ type: "join-room", message: response }));
-                    console.log(roomCode);
+                    wss.clients.forEach((client) => {
+                        if (client.roomCode === roomCode) {
+                            client.send(JSON.stringify({ type: "join-room", message: response }));
+                        }
+                    });
                     break;
                 case "add-music":
                     username = message.username;
                     music = message.music;
                     roomCode = message.roomCode;
                     response = yield insertMusicIntoQueue(roomCode, music, username);
-                    socket.send(JSON.stringify({ type: "add-music", message: response, music: music }));
+                    wss.clients.forEach((client) => {
+                        if (client.roomCode === roomCode) {
+                            client.send(JSON.stringify({ type: "add-music", message: response, music: music }));
+                        }
+                    });
                     break;
                 case "delete-music":
                     music = message.music;
                     roomCode = message.roomCode;
                     response = yield deleteMusicFromQueue(roomCode, music);
-                    socket.send(JSON.stringify({ type: "delete-music", message: response, music: music }));
+                    wss.clients.forEach((client) => {
+                        if (client.roomCode === roomCode) {
+                            client.send(JSON.stringify({ type: "delete-music", message: response, music: music }));
+                        }
+                    });
                     break;
                 case "close-room":
                     roomCode = message.roomCode;
                     response = yield closeRoom(roomCode);
-                    socket.send(JSON.stringify({ type: "close-room", message: response }));
+                    wss.clients.forEach((client) => {
+                        if (client.roomCode === roomCode) {
+                            client.send(JSON.stringify({ type: "close-room", message: response }));
+                        }
+                    });
                     break;
                 case "get-songs":
                     roomCode = message.roomCode;
                     response = yield getSongs(roomCode);
                     socket.send(JSON.stringify({ type: "get-songs", songs: response }));
                     break;
-                case "vote-song":
-                    roomCode = message.roomCode;
-                    url = message.song.url;
-                    response = yield voteSong(roomCode, url);
-                    socket.send(JSON.stringify({ type: "vote-song", message: response }));
-                    break;
-                default:
-                    socket.send(JSON.stringify({ type: "error", message: "Please Try Again Later" }));
             }
         }));
     }
