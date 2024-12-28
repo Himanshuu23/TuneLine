@@ -8,9 +8,6 @@ export default function useSocket() {
       newSocket.onopen = () => {
         console.log("WS Connection Established ~client")
       }
-      newSocket.onmessage = (mssg) => {
-        console.log(mssg.data)
-      }
       setSocket(newSocket);
 
       return () => {

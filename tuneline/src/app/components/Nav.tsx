@@ -6,24 +6,20 @@ import LoginDialog from "./ui/LoginDialog";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import JoinDialog from "./ui/JoinDialog";
 
 export default function Navbar() {
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState<string>("");
   const { data: session, status } = useSession();
   const socket = useSocket();
 
   useEffect(() => {
     if(socket) {
-      socket.onmessage = async (data) => {
-        const message = await JSON.parse(JSON.stringify(data));
+      socket.onmessage = async (event) => {
+        const message = await JSON.parse(event.data);
         switch(message.type) {
-          case "join-room":
-            console.log(message.message)
-            window.location.href = `/room/${input}`
-            break;
           case "make-room":
-            console.log(message.message)
-            window.location.href = `/room/${input}`
+            window.location.href = `/room?room_code=${message.roomCode}`
             break;
         }
       }
@@ -34,24 +30,17 @@ export default function Navbar() {
         socket.onmessage = null;
       }
     }
-  }, [socket, input])
+  }, [socket])
   
   function createRoom(email:string) {
-    if (socket && socket.readyState === WebSocket.OPEN && status === "authenticated") {
+    if (socket && socket.readyState === WebSocket.OPEN ) { // && status === "authenticated"
       socket.send(JSON.stringify({ type: "make-room", username: email }))
-      window.location.href = "/room"
     } else {
       console.error("WebSocket is NOT Open!")
     }
   }
-
-  function joinRoom(roomCode:string, username:string) {
-    if(socket && socket.readyState === WebSocket.OPEN && status === "authenticated") {
-      socket.send(JSON.stringify({ type:"join-room", username:username, roomCode:roomCode }));
-    } else {
-      console.error("WebSocket is NOT Open!")
-    }
-  }
+  // keep the logins -> google, X, twitch and github
+// for the join room, we can open a modal where the users can enter roomCode and their username would be the one using their signed in credentials using nextAuth and for the search bar we can search on the basis of the youtuber's name which we would be asking either way to show on /room path
 
   return (
     <div className="flex mr-3 py-4 px-6 fixed top-0 left-0 right-0 z-50 h-16 justify-between backdrop-blur-md">
@@ -63,9 +52,9 @@ export default function Navbar() {
           type="text" 
           value={input} 
           onChange={(e) => setInput(e.target.value)} 
-          placeholder="Join using Code" 
+          placeholder="Find your fav creator" 
         />
-        <Button className="w-1/3 rounded-full" variant="secondary" onClick={() => joinRoom(input, session?.user?.email || "")}>Join</Button>
+        <JoinDialog />
         <Button className="rounded-full" onClick={() => createRoom(session?.user?.email || "")}>Create Room</Button>
       </div>
       <div>

@@ -108,7 +108,7 @@ export default function Queue() {
       <div className="flex items-center">
         <span className="text-red-500 font-bold text-lg mr-4">05</span>
         <div>
-          <h3 className="text-white font-semibold">Cigarettes After Sex</h3>
+          <h3 className="text-white font-semibold">Cigarettes</h3>
           <p className="text-gray-400 text-sm">Live At Etihad Arena</p>
         </div>
       </div>

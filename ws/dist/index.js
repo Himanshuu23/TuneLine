@@ -130,9 +130,9 @@ wss.on("connection", (socket, request) => {
                     roomCode = message.roomCode;
                     username = message.username;
                     response = yield joinRoom(roomCode, username, socket);
-                    socket.send(JSON.stringify({ type: "join-room", message: response }));
+                    socket.send(JSON.stringify({ type: "join-room", message: response, roomCode: roomCode }));
                     wss.clients.forEach((client) => {
-                        if (client.roomCode === roomCode) {
+                        if (client.roomCode === roomCode && client !== socket) {
                             client.send(JSON.stringify({ type: "join-room", message: response }));
                         }
                     });
@@ -142,30 +142,18 @@ wss.on("connection", (socket, request) => {
                     music = message.music;
                     roomCode = message.roomCode;
                     response = yield insertMusicIntoQueue(roomCode, music, username);
-                    wss.clients.forEach((client) => {
-                        if (client.roomCode === roomCode) {
-                            client.send(JSON.stringify({ type: "add-music", message: response, music: music }));
-                        }
-                    });
+                    socket.send(JSON.stringify({ type: "add-music", message: response, music: music }));
                     break;
                 case "delete-music":
                     music = message.music;
                     roomCode = message.roomCode;
                     response = yield deleteMusicFromQueue(roomCode, music);
-                    wss.clients.forEach((client) => {
-                        if (client.roomCode === roomCode) {
-                            client.send(JSON.stringify({ type: "delete-music", message: response, music: music }));
-                        }
-                    });
+                    socket.send(JSON.stringify({ type: "delete-music", message: response, music: music }));
                     break;
                 case "close-room":
                     roomCode = message.roomCode;
                     response = yield closeRoom(roomCode);
-                    wss.clients.forEach((client) => {
-                        if (client.roomCode === roomCode) {
-                            client.send(JSON.stringify({ type: "close-room", message: response }));
-                        }
-                    });
+                    socket.send(JSON.stringify({ type: "close-room", message: response }));
                     break;
                 case "get-songs":
                     roomCode = message.roomCode;
@@ -176,3 +164,4 @@ wss.on("connection", (socket, request) => {
         }));
     }
 });
+// MAKE THE ALGO FIRST INSERTING THE SONGS ON THE BASIS OF MONEY AND THEN PRIORITIZING ON THE BASIS OF VOTES THEN NORMALLY AND THEN JUST DOING THE GET SONGS -> NORMALLY -> COMPLETE 

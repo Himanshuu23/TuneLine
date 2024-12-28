@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import useSocket from "../hooks";
 import Queue from "./Queue";
 import { useSession } from "next-auth/react";
-import Image from "next/image";
+import { useSearchParams } from "next/navigation";
 
 export default function RoomContainer() {
   const [roomCode, setRoomCode] = useState<string>("")
@@ -12,15 +12,15 @@ export default function RoomContainer() {
   const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
 
   const socket = useSocket();
+  const searchParams = useSearchParams();
     
   useEffect(() => {
     if (socket) {
-      socket.onmessage = async (data) => {
-        const message = await JSON.parse(JSON.stringify(data));
+      socket.onmessage = async (event) => {
+        const message = await JSON.parse(event.data);
         switch(message.type) {
           case "make-room":
-            const roomCode = message.roomCode;
-            setRoomCode(roomCode);
+            setRoomCode(message.roomCode);
           case "close-room":
             setRoomCode("")
             window.location.href = '/'
@@ -34,6 +34,12 @@ export default function RoomContainer() {
         }
     }
    }, [socket, setRoomCode])
+
+   useEffect(() => {
+    const roomCode = searchParams.get("room_code");
+    if (roomCode)
+      setRoomCode(roomCode)
+  }, [searchParams])
 
   function closeRoom(url:string ) {
    if(socket && socket.readyState === WebSocket.OPEN && status === "authenticated") {
@@ -49,7 +55,7 @@ export default function RoomContainer() {
             <div className="h-8 w-8 rounded-full bg-gray-700 overflow-hidden">
               <img src="https://via.placeholder.com/150" alt="Avatar" className="w-full h-full object-cover" />
             </div>
-            <span className="text-lg font-medium">Penny Amberton</span>
+            <span className="text-lg font-medium">Penny Amberton {roomCode}</span>
           </div>
           <div className="text-lg font-semibold">42:04</div>
         </div>
