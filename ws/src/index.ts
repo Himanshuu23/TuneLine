@@ -5,6 +5,7 @@ type dataType = {
     roomCode: string,
     queue: musicType[],
     user: string,
+    details: string,
 }
 
 type musicType = {
@@ -58,9 +59,9 @@ function rateLimitByIp(ip: string): boolean {
     return toBeRateLimited;
 }
 
-async function makeNewRoom(admin: string): Promise<string> {
+async function makeNewRoom(admin: string, details: string): Promise<string> {
     let code = Math.random().toString(36).substring(2, 8);
-    ROOMS[code] = { roomCode: code, queue: [], user: admin };
+    ROOMS[code] = { roomCode: code, queue: [], user: admin, details: details };
     return code;
 }
 
@@ -122,11 +123,12 @@ wss.on("connection", (socket: WebSocket, request) => {
   } else {
     socket.on("message", async (data) => {
         const message = JSON.parse(data.toString());
-        let admin: string, roomCode: string, username: string, response: string, music: musicType;
+        let admin: string, roomCode: string, username: string, response: string, music: musicType, details: string;
         switch(message.type) {
             case "make-room":
                 admin = message.username;
-                roomCode = await makeNewRoom(admin);
+                details = message.details
+                roomCode = await makeNewRoom(admin, details);
                 response = await joinRoom(roomCode, admin, socket as WebSocketWithRoomCode);
                 socket.send(JSON.stringify({ type:"make-room", message: "created-room", roomCode: roomCode, response: response }));
                 break;

@@ -13,7 +13,7 @@ import { DialogTrigger } from "@radix-ui/react-dialog"
 import { useSession } from "next-auth/react"
 import { useEffect, useState } from "react";
 
-export default function JoinDialog() {
+export default function Join() {
  const { data: session } = useSession();
  const [input, setInput] = useState<string>("");
  
@@ -49,7 +49,7 @@ export default function JoinDialog() {
   return (
   
   <Dialog>
-      <DialogTrigger className="px-4 text-sm font-medium text-gray-800 bg-gray-200 border border-gray-300 rounded-full hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"> 
+      <DialogTrigger className="px-4 text-sm font-medium text-gray-800 bg-gray-200 border border-gray-300 rounded-full hover:bg-gray-300"> 
         Join
       </DialogTrigger>
       <DialogContent className="bg-black flex justify-between">
@@ -57,8 +57,8 @@ export default function JoinDialog() {
         <DialogTitle className="text-3xl">Enter Room Code</DialogTitle>
       </DialogHeader>
      <div className="flex gap-10 my-2 mr-10">
-        <Input className="mt-2 placeholder:text-gray-200 rounded-full w-4/5 border-2 border-gray-300 focus:border focus:border-gray-300 focus:outline-none" 
-          type="text" 
+        <Input className="mt-2 placeholder:text-gray-200 rounded-full w-4/5 focus:border-2 focus:border-gray-300 focus:outline-none" 
+          type="text"
           value={input} 
           onChange={(e) => setInput(e.target.value)} 
           placeholder="Join using Code" 

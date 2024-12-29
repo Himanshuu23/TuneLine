@@ -1,44 +1,14 @@
 "use client"
 
-import { useSession } from "next-auth/react";
-import useSocket from "../hooks";
-import LoginDialog from "./ui/LoginDialog";
-import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
+import Login from "./ui/LoginDialog";
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
-import JoinDialog from "./ui/JoinDialog";
+import Join from "./ui/JoinDialog";
+import Create from "./ui/CreateDialog";
 
 export default function Navbar() {
   const [input, setInput] = useState<string>("");
-  const { data: session, status } = useSession();
-  const socket = useSocket();
 
-  useEffect(() => {
-    if(socket) {
-      socket.onmessage = async (event) => {
-        const message = await JSON.parse(event.data);
-        switch(message.type) {
-          case "make-room":
-            window.location.href = `/room?room_code=${message.roomCode}`
-            break;
-        }
-      }
-    }
-
-    return () => {
-      if(socket) {
-        socket.onmessage = null;
-      }
-    }
-  }, [socket])
-  
-  function createRoom(email:string) {
-    if (socket && socket.readyState === WebSocket.OPEN ) { // && status === "authenticated"
-      socket.send(JSON.stringify({ type: "make-room", username: email }))
-    } else {
-      console.error("WebSocket is NOT Open!")
-    }
-  }
   // keep the logins -> google, X, twitch and github
 // for the join room, we can open a modal where the users can enter roomCode and their username would be the one using their signed in credentials using nextAuth and for the search bar we can search on the basis of the youtuber's name which we would be asking either way to show on /room path
 
@@ -54,11 +24,11 @@ export default function Navbar() {
           onChange={(e) => setInput(e.target.value)} 
           placeholder="Find your fav creator" 
         />
-        <JoinDialog />
-        <Button className="rounded-full" onClick={() => createRoom(session?.user?.email || "")}>Create Room</Button>
+        <Join />
+        <Create />
       </div>
       <div>
-        <LoginDialog />
+        <Login />
       </div>
     </div>
   );

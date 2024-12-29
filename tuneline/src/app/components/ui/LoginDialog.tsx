@@ -11,7 +11,7 @@ import { signIn, signOut, useSession } from "next-auth/react"
 import GoogleLogo from "../logos/Google";
 import GithubLogo from "../logos/Github";
 
-export default function LoginDialog() {
+export default function Login() {
  const { data: session } = useSession();
 
   const handleLogin = (provider:string) => {
