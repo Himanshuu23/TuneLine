@@ -95,10 +95,9 @@ async function deleteMusicFromQueue(roomCode: string, music: musicType): Promise
     return "Room not found!";
 }
 
-async function getSongs(roomCode: string): Promise<string> {
+async function getSongs(roomCode: string): Promise<musicType[] | string> {
     if (ROOMS[roomCode]) {
-        const songs = ROOMS[roomCode].queue.map((music) => music.youtubeUrl).join(", ");
-        return songs;
+        return ROOMS[roomCode].queue;
     }
     return "No songs found or Room not found!";
 }
@@ -123,7 +122,7 @@ wss.on("connection", (socket: WebSocket, request) => {
   } else {
     socket.on("message", async (data) => {
         const message = JSON.parse(data.toString());
-        let admin: string, roomCode: string, username: string, response: string, music: musicType, details: string;
+        let admin: string, roomCode: string, username: string, response: string | musicType[], music: musicType, details: string;
         switch(message.type) {
             case "make-room":
                 admin = message.username;

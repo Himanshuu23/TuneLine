@@ -15,6 +15,7 @@ import { useEffect, useState } from "react";
 import { z } from "zod";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation"; // Fixed the import to match Next.js 13+ router API
 
 const socialMediaSchema = z.object({
   url: z
@@ -35,7 +36,9 @@ const socialMediaSchema = z.object({
 export default function Create() {
   const { data: session } = useSession();
   const [ytUrl, setYtUrl] = useState<string>("");
+
   const socket = useSocket();
+  const router = useRouter();
 
   const {
     register,
@@ -67,7 +70,7 @@ export default function Create() {
       socket.onmessage = async (event) => {
         const message = await JSON.parse(event.data);
         if (message.type === "make-room") {
-          window.location.href = `/room?room_code=${message.roomCode}`;
+          router.push(`/room?room_code=${message.roomCode}`);
         }
       };
     }

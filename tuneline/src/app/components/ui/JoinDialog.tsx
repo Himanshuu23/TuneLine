@@ -1,5 +1,3 @@
-'use client'
-
 import useSocket from "@/app/hooks";
 import { Button } from "@/components/ui/button";
 import {
@@ -7,10 +5,11 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { DialogTrigger } from "@radix-ui/react-dialog"
-import { useSession } from "next-auth/react"
+import { DialogTrigger } from "@radix-ui/react-dialog";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation"; // Fixed the import to match Next.js 13+ router API
 import { useEffect, useState } from "react";
 
 export default function Join() {
@@ -18,6 +17,7 @@ export default function Join() {
  const [input, setInput] = useState<string>("");
  
  const socket = useSocket();
+ const router = useRouter();
 
   function joinRoom(roomCode:string, username:string) {
     if(socket && socket.readyState === WebSocket.OPEN ) { // && status === "authenticated"
@@ -33,7 +33,8 @@ export default function Join() {
           const message = await JSON.parse(event.data);
           switch(message.type) {
             case "join-room":
-              window.location.href = `/room?room_code=${message.roomCode}`
+              console.log(message)
+              router.push(`/room?room_code=${message.roomCode}`); // Updated to work with the new router API
               break;
           }
         }

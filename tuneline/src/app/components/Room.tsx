@@ -10,10 +10,10 @@ import Socials from "./ui/SocialsDialog";
 
 export default function RoomContainer() {
   const [roomCode, setRoomCode] = useState<string>("");
-  const { data: session, status } = useSession();
   const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
   const [isViewOpen, setIsViewOpen] = useState<boolean>(false);
   const [viewOption, setViewOption] = useState<number>(1);
+  const { data: session, status } = useSession();
 
   const socket = useSocket();
   const searchParams = useSearchParams();

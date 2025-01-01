@@ -47,10 +47,10 @@ function rateLimitByIp(ip) {
     });
     return toBeRateLimited;
 }
-function makeNewRoom(admin) {
+function makeNewRoom(admin, details) {
     return __awaiter(this, void 0, void 0, function* () {
         let code = Math.random().toString(36).substring(2, 8);
-        ROOMS[code] = { roomCode: code, queue: [], user: admin };
+        ROOMS[code] = { roomCode: code, queue: [], user: admin, details: details };
         return code;
     });
 }
@@ -91,8 +91,7 @@ function deleteMusicFromQueue(roomCode, music) {
 function getSongs(roomCode) {
     return __awaiter(this, void 0, void 0, function* () {
         if (ROOMS[roomCode]) {
-            const songs = ROOMS[roomCode].queue.map((music) => music.youtubeUrl).join(", ");
-            return songs;
+            return ROOMS[roomCode].queue;
         }
         return "No songs found or Room not found!";
     });
@@ -118,11 +117,12 @@ wss.on("connection", (socket, request) => {
     else {
         socket.on("message", (data) => __awaiter(void 0, void 0, void 0, function* () {
             const message = JSON.parse(data.toString());
-            let admin, roomCode, username, response, music;
+            let admin, roomCode, username, response, music, details;
             switch (message.type) {
                 case "make-room":
                     admin = message.username;
-                    roomCode = yield makeNewRoom(admin);
+                    details = message.details;
+                    roomCode = yield makeNewRoom(admin, details);
                     response = yield joinRoom(roomCode, admin, socket);
                     socket.send(JSON.stringify({ type: "make-room", message: "created-room", roomCode: roomCode, response: response }));
                     break;

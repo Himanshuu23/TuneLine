@@ -1,39 +1,31 @@
-import { useSession } from "next-auth/react";
+import { useSession } from "next-auth/react"
 import useSocket from "../hooks";
-import { MessageType } from "../types";
-import { useEffect } from "react";
+import { SongType } from "../types";
 
-export default function Song({name}: {name:string}) {
-    const socket = useSocket();
-    const { data: session, status } = useSession();
+export default function Song({song}:{song:SongType}) {
+  const { data:session, status } = useSession();
 
-useEffect(() => {
-    if(socket) {
-        socket.onmessage = async (data) => {
-          const message:MessageType = await JSON.parse(JSON.stringify(data));
-          if (message.type == "vote-song") {
-            console.log(message.message)
-          }
-        }
-    }
+  const socket = useSocket();
+//every time we vote we have to getSongs()? or it does the increment realtime on its own
+  async function voteSong(admin:string, url:string) {
+   if(socket && socket.readyState === WebSocket.OPEN ){ // && status === "authenticated"
+    const newSocket = useSocket();
+    newSocket?.send(JSON.stringify({message:"vote-song", admin:admin, url:url}));
+   }
+  }
 
-    return () => {
-     if(socket){
-        socket.onmessage = null;
-     }
-    }
-})
-
-    function voteSong() { // -> when you will be using this component in the Queue -> pass the songs as props to this and pass the song with the socket message as well
-      if(socket && socket.readyState === WebSocket.OPEN && status === "authenticated"){
-        socket?.send(JSON.stringify({ type:"vote-song", admin:session?.user?.email }))
-      } 
-    }
-
-    return (
+  return (
+    <div className="flex items-center justify-between bg-gray-800 p-4 rounded-md shadow-md">
+      <div className="flex items-center">
+        <span className="text-red-500 font-bold text-lg mr-4">{song.votes}</span>
         <div>
-            <p>{name}</p>
-            <button onClick={() => voteSong()}>Vote</button>
+          <h3 className="text-white font-semibold">{song.url}</h3>
+          <p className="text-gray-400 text-sm">Artist Name</p>
         </div>
-    )
+      </div>
+      <button onClick={() => voteSong(session?.user?.email || "someone", song.url)} className="text-sm font-bold text-red-500 border border-red-500 px-4 py-2 rounded-full hover:bg-red-500 hover:text-white">
+        Vote
+      </button>
+    </div>
+  )
 }
