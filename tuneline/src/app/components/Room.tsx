@@ -80,7 +80,7 @@ export default function RoomContainer() {
             </div>
             <span className="text-lg font-medium">Penny Amberton</span>
           </div>
-          <div className="text-2xl font-bold">{roomCode}roomcode</div>
+          <div className="text-2xl font-bold">{roomCode}</div>
           <div className="text-lg font-semibold">42:04</div>
         </div>
         <div
@@ -89,31 +89,31 @@ export default function RoomContainer() {
           }`}
         >
           {viewOption !== 3 && (
-            <div className="w-1/2 h-full p-4 flex justify-center items-center">
+            <div
+              className={`${
+                viewOption === 2 ? "w-full" : "w-1/2 p-4"
+              } h-full flex justify-center items-center`}
+            >
               <div className="w-full h-full bg-gray-700 rounded-lg overflow-hidden">
-                <Image
-                  src="/test.jpg"
-                  alt="Penny"
-                  className="object-cover w-full h-full"
-                  width={300}
-                  height={300}
-                />
+                <video src="/video1.mp4" className="w-full h-full object-cover" controls />
               </div>
             </div>
           )}
           {viewOption !== 2 && (
-            <div className="w-1/2 h-full p-4 flex justify-center items-center">
+            <div
+              className={`${
+                viewOption === 3 ? "w-full" : "w-1/2"
+              } h-full p-4 flex justify-center items-center`}
+            >
               <div className="w-full h-full bg-gray-800 rounded-lg overflow-hidden flex justify-center items-center">
-                <div className="w-20 h-20 bg-gray-700 rounded-full flex justify-center items-center">
-                  <span className="text-5xl">🐶</span>
-                </div>
+                <video src="/video2.mp4" className="w-full h-full object-cover" controls />
               </div>
             </div>
           )}
         </div>
         <div className="flex justify-between items-center mt-3"></div>
         <div className="flex justify-center items-center mt-8 space-x-8">
-            <Socials /> 
+          <Socials />
           <div className="relative">
             <button
               className="w-14 h-14 flex justify-center items-center rounded-full bg-gray-800"
@@ -149,13 +149,17 @@ export default function RoomContainer() {
               </div>
             )}
           </div>
-          <button className="w-14 h-14 flex justify-center items-center rounded-full bg-gray-800" onClick={() => setIsChatOpen((prev) => !prev)}>
+          <button
+            className="w-14 h-14 flex justify-center items-center rounded-full bg-gray-800"
+            onClick={() => setIsChatOpen((prev) => !prev)}
+          >
             <Image
               src="/Comment.png"
               alt="Penny"
               className="object-cover w-full h-full invert"
               width={300}
               height={300}
+              style={{ transform: "scale(150%)" }}
             />
           </button>
           <button className="w-14 h-14 flex justify-center items-center rounded-full bg-red-500">
@@ -177,8 +181,19 @@ export default function RoomContainer() {
               className="w-8 h-8 flex justify-center items-center bg-red-500 rounded-full"
               onClick={() => setIsChatOpen(false)}
             >
-              <svg className="w-5 h-5 text-white" fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <svg
+                className="w-5 h-5 text-white"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>
@@ -197,7 +212,7 @@ export default function RoomContainer() {
         <Queue />
       )}
     </div>
-  );
+  );    
 }
 
 {/* on the end put the ... when you open you get to subscribe the socials of the streamer without opening the app itself like follow on twitch etc just using a modal, then share/invite then just leave the room and also one open chat which does the queue half the size and another half is the twitch/yt chat directly*/}

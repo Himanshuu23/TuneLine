@@ -16,8 +16,8 @@ export default function Socials() {
   return (
   
   <Dialog>
-      <DialogTrigger className="w-14 h-14 flex justify-center items-center rounded-full bg-gray-800"> 
-        ...
+      <DialogTrigger className="w-14 h-14 text-4xl flex justify-center items-center rounded-full bg-gray-800"> 
+        <div style={{transform: 'translateY(-30%)'}}>...</div>
       </DialogTrigger>
       <DialogContent className="bg-black flex justify-between">
       <DialogHeader>
