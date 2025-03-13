@@ -33,6 +33,7 @@ export default function Join() {
     }
 
       if(socket) {
+        console.log(socket)
         socket.onmessage = async (event) => {
           const message = await JSON.parse(event.data);
           console.log(message, "this is the message recieved after doing join-room from the frontend")
