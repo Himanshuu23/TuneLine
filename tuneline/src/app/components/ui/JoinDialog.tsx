@@ -33,17 +33,14 @@ export default function Join() {
     }
 
       if(socket) {
-        console.log(socket)
-        socket.onmessage = async (event) => {
-          const message = await JSON.parse(event.data);
-          console.log(message, "this is the message recieved after doing join-room from the frontend")
+        socket.addEventListener("message", (event) => {
+          const message = JSON.parse(event.data);
           switch(message.type) {
             case "join-room":
-              console.log(message)
               router.push(`/room?room_code=${message.roomCode}`);
               break;
           }
-        }
+        })
       }
   
       return () => {

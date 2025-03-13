@@ -23,8 +23,8 @@ export default function Queue() {
     }
 
     if (socket) {
-      socket.onmessage = async (event) => {
-        const message: MessageType = await JSON.parse(
+      socket.addEventListener("message", (event) => {
+        const message: MessageType = JSON.parse(
           JSON.stringify(event.data)
         );
         switch (message.type) {
@@ -41,7 +41,7 @@ export default function Queue() {
             if (message.song) setSongs((prev) => prev.filter((s) => s !== message.song));
             break;
         }
-      };
+      });
     }
     return () => {
       if (socket) {

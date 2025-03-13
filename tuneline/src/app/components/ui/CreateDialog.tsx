@@ -67,12 +67,12 @@ export default function Create() {
 
   useEffect(() => {
     if (socket) {
-      socket.onmessage = async (event) => {
-        const message = await JSON.parse(event.data);
+      socket.addEventListener("message", (event) => {
+        const message = JSON.parse(event.data);
         if (message.type === "make-room") {
           router.push(`/room?room_code=${message.roomCode}`);
         }
-      };
+      });
     }
 
     return () => {

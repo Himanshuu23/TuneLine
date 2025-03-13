@@ -28,12 +28,12 @@ export default function Navbar() {
     }
 
     if (socket) {
-      socket.onmessage = async (event) => {
-        const message = await JSON.parse(event.data);
+      socket.addEventListener("message", (event) => {
+        const message = JSON.parse(event.data);
         if (message.type === "get-creators") {
           setCreators(message.response);
         }
-      };
+      });
     }
     return () => {
       if (socket) {

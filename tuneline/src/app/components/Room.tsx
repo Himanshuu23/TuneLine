@@ -24,8 +24,8 @@ export default function RoomContainer() {
     }
 
     if (socket) {
-      socket.onmessage = async (event) => {
-        const message = await JSON.parse(event.data);
+      socket.addEventListener("message", (event) => {
+        const message = JSON.parse(event.data);
         switch (message.type) {
           case "make-room":
             setRoomCode(message.roomCode);
@@ -33,7 +33,7 @@ export default function RoomContainer() {
             setRoomCode("");
             window.location.href = "/";
         }
-      };
+      });
     }
 
     return () => {
@@ -49,7 +49,7 @@ export default function RoomContainer() {
   }, [searchParams]);
 
   function closeRoom(url: string) {
-    if (socket && socket.readyState === WebSocket.OPEN && status === "authenticated") {
+    if (socket && socket.readyState === WebSocket.OPEN) { //  && status === "authenticated"
       socket?.send(JSON.stringify({ type: "close-room", admin: session?.user?.email }));
     }
   }
