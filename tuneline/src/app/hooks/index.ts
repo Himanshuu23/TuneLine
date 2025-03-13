@@ -24,8 +24,6 @@ export default function useSocket() {
       sharedSocket = null;
     };
 
-    ws.addEventListener("message", (event) => console.log(event.data))
-
     ws.onerror = (error) => {
       console.error("WebSocket error:", error);
     };

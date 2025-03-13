@@ -16,7 +16,7 @@ export default function RoomContainer() {
   const { data: session, status } = useSession();
 
   const socket = useSocket();
-  
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     if (!socket) {
@@ -27,10 +27,6 @@ export default function RoomContainer() {
       socket.addEventListener("message", (event) => {
         const message = JSON.parse(event.data);
         switch (message.type) {
-          case "make-room":
-            setRoomCode(message.roomCode);
-          case "join-room":
-            setRoomCode(message.roomCode);
           case "close-room":
             setRoomCode("");
             window.location.href = "/";
@@ -64,6 +60,14 @@ export default function RoomContainer() {
     setIsViewOpen(false);
     document.removeEventListener("click", handleClickOutside);
   }
+
+  useEffect(() => {
+    const roomCode = searchParams.get("room_code");
+    
+    if (roomCode) {
+      setRoomCode(roomCode)
+    }
+  }, [])
 
   return (
     <div className="flex h-screen w-full bg-gray-900">

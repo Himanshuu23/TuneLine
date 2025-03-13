@@ -52,7 +52,6 @@ export default function Create() {
 
   const onSubmit: SubmitHandler<{ url: string }> = (data) => {
     createRoom(session?.user?.email || "");
-    console.log(data);
   };  
 
   function createRoom(email: string) {

@@ -10,7 +10,7 @@ import { DialogTrigger } from "@radix-ui/react-dialog"
 import { signIn, signOut, useSession } from "next-auth/react"
 import Image from "next/image";
 
-export default function Pay({addSong, url}: any) {
+export default function Pay({addSong, url, roomCode}: any) {
  const { data: session } = useSession();
 
   const handleLogin = (provider:string) => {
@@ -38,7 +38,7 @@ export default function Pay({addSong, url}: any) {
       </DialogHeader>
      <div className="flex gap-10 my-2 mr-10">
         <button style={{transform: "scale(150%)"}}>Yes</button>
-        <button onClick={() => addSong(url, 0)} style={{transform: "scale(150%)"}}>No</button>
+        <button onClick={() => addSong(url, 0, roomCode)} style={{transform: "scale(150%)"}}>No</button>
     </div>
     </DialogContent>
   </Dialog>

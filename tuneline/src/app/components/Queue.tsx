@@ -15,6 +15,8 @@ export default function Queue() {
   const [songs, setSongs] = useState<SongType[]>([
   // { url: "songname", votes: 20, money: 30 },
   ]);
+  const [roomCode, setRoomCode] = useState<string>("");
+
   const { data: session } = useSession();
   const socket = useSocket();
   const searchParams = useSearchParams();
@@ -52,13 +54,14 @@ export default function Queue() {
     };
   }, [socket, songs]);
 
-  function addSong(url: string, money: number) {
+  function addSong(url: string, money: number, roomCode: string) {
     if (socket && socket.readyState === WebSocket.OPEN) {
       socket?.send(
         JSON.stringify({
           type: "add-music",
           admin: session?.user?.email,
-          music: { youtubeUrl: url, money: money, votes: 0, roomCode: searchParams.get("room_code") },
+          roomCode: roomCode,
+          music: { youtubeUrl: url, money: money, votes: 0 },
         })
       );
     }
@@ -75,6 +78,14 @@ export default function Queue() {
   useEffect(() => {
     getSongs();
   }, [songs]);
+
+  useEffect(() => {
+    const roomCode = searchParams.get("room_code");
+    
+    if (roomCode) {
+      setRoomCode(roomCode);
+    }
+  }, [])
 
   return (
     <div className="w-1/3 flex flex-col justify-between bg-black p-6 rounded-b-lg rounded-tl-lg shadow-lg">
@@ -98,8 +109,8 @@ export default function Queue() {
           placeholder="Enter music url"
           className="placeholder:text-gray-200 my-4 focus:border-2 focus:border-gray-300 focus:outline-none"
         />
-        <button onClick={() => addSong(url || "", money)}>
-          <Pay addSong={addSong} url={url} />
+        <button onClick={() => addSong(url || "", money, roomCode)}>
+          <Pay addSong={addSong} url={url} roomCode={roomCode} />
         </button>
       </div>
     </div>
