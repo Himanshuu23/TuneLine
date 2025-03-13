@@ -16,7 +16,7 @@ export default function RoomContainer() {
   const { data: session, status } = useSession();
 
   const socket = useSocket();
-  const searchParams = useSearchParams();
+  
 
   useEffect(() => {
     if (!socket) {
@@ -28,6 +28,8 @@ export default function RoomContainer() {
         const message = JSON.parse(event.data);
         switch (message.type) {
           case "make-room":
+            setRoomCode(message.roomCode);
+          case "join-room":
             setRoomCode(message.roomCode);
           case "close-room":
             setRoomCode("");
@@ -42,11 +44,6 @@ export default function RoomContainer() {
       }
     };
   }, [socket]);
-
-  useEffect(() => {
-    const roomCode = searchParams.get("room_code");
-    if (roomCode) setRoomCode(roomCode);
-  }, [searchParams]);
 
   function closeRoom(url: string) {
     if (socket && socket.readyState === WebSocket.OPEN) { //  && status === "authenticated"

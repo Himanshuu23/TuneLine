@@ -7,6 +7,7 @@ import { MessageType, SongType } from "../types";
 import Song from "./Song";
 import { Input } from "@/components/ui/input";
 import Pay from "./ui/PayDialog";
+import { useSearchParams } from "next/navigation";
 
 export default function Queue() {
   const [money, setMoney] = useState<number>(0);
@@ -16,6 +17,7 @@ export default function Queue() {
   ]);
   const { data: session } = useSession();
   const socket = useSocket();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     if (!socket) {
@@ -56,7 +58,7 @@ export default function Queue() {
         JSON.stringify({
           type: "add-music",
           admin: session?.user?.email,
-          music: { youtubeUrl: url, money: money, votes: 0 },
+          music: { youtubeUrl: url, money: money, votes: 0, roomCode: searchParams.get("room_code") },
         })
       );
     }
@@ -97,7 +99,7 @@ export default function Queue() {
           className="placeholder:text-gray-200 my-4 focus:border-2 focus:border-gray-300 focus:outline-none"
         />
         <button onClick={() => addSong(url || "", money)}>
-          <Pay />
+          <Pay addSong={addSong} url={url} />
         </button>
       </div>
     </div>
