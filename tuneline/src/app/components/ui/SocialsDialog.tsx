@@ -7,7 +7,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { DialogTrigger } from "@radix-ui/react-dialog"
-import { signIn, signOut, useSession } from "next-auth/react"
 import GoogleLogo from "../logos/Google";
 import GithubLogo from "../logos/Github";
 

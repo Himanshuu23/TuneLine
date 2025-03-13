@@ -96,6 +96,15 @@ function getSongs(roomCode) {
         return "No songs found or Room not found!";
     });
 }
+function getCreators() {
+    return __awaiter(this, void 0, void 0, function* () {
+        let creators = [];
+        for (let i in ROOMS) {
+            creators.push(ROOMS[i].user);
+        }
+        return creators;
+    });
+}
 function closeRoom(roomCode) {
     return __awaiter(this, void 0, void 0, function* () {
         if (ROOMS[roomCode]) {
@@ -117,7 +126,8 @@ wss.on("connection", (socket, request) => {
     else {
         socket.on("message", (data) => __awaiter(void 0, void 0, void 0, function* () {
             const message = JSON.parse(data.toString());
-            let admin, roomCode, username, response, music, details;
+            console.log(message);
+            let admin, roomCode, username, response, music, details, creators;
             switch (message.type) {
                 case "make-room":
                     admin = message.username;
@@ -160,6 +170,9 @@ wss.on("connection", (socket, request) => {
                     response = yield getSongs(roomCode);
                     socket.send(JSON.stringify({ type: "get-songs", songs: response }));
                     break;
+                case "get-creators":
+                    creators = yield getCreators();
+                    socket.send(JSON.stringify({ type: "get-creators", response: JSON.stringify(creators) }));
             }
         }));
     }

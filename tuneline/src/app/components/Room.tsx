@@ -19,6 +19,10 @@ export default function RoomContainer() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
+    if (!socket) {
+      return
+    }
+
     if (socket) {
       socket.onmessage = async (event) => {
         const message = await JSON.parse(event.data);
@@ -37,7 +41,7 @@ export default function RoomContainer() {
         socket.onmessage = null;
       }
     };
-  }, [socket, setRoomCode]);
+  }, [socket]);
 
   useEffect(() => {
     const roomCode = searchParams.get("room_code");

@@ -18,6 +18,10 @@ export default function Queue() {
   const socket = useSocket();
 
   useEffect(() => {
+    if (!socket) {
+      return
+    }
+
     if (socket) {
       socket.onmessage = async (event) => {
         const message: MessageType = await JSON.parse(

@@ -102,6 +102,15 @@ async function getSongs(roomCode: string): Promise<musicType[] | string> {
     return "No songs found or Room not found!";
 }
 
+async function getCreators() {
+    let creators = []
+    for (let i in ROOMS) {
+        creators.push(ROOMS[i].user)
+    }
+
+    return creators
+}
+
 async function closeRoom(roomCode: string): Promise<string> {
     if (ROOMS[roomCode]) {
         delete ROOMS[roomCode];
@@ -122,7 +131,7 @@ wss.on("connection", (socket: WebSocket, request) => {
   } else {
     socket.on("message", async (data) => {
         const message = JSON.parse(data.toString());
-        let admin: string, roomCode: string, username: string, response: string | musicType[], music: musicType, details: string;
+        let admin: string, roomCode: string, username: string, response: string | musicType[], music: musicType, details: string, creators: string[];
         switch(message.type) {
             case "make-room":
                 admin = message.username;
@@ -165,6 +174,9 @@ wss.on("connection", (socket: WebSocket, request) => {
                 response = await getSongs(roomCode);
                 socket.send(JSON.stringify({ type:"get-songs", songs: response }));
                 break;
+            case "get-creators":
+                creators = await getCreators();
+                socket.send(JSON.stringify({ type: "get-creators", response: JSON.stringify(creators) }))
         }
     });
   }

@@ -8,8 +8,6 @@ import {
 } from "@/components/ui/dialog"
 import { DialogTrigger } from "@radix-ui/react-dialog"
 import { signIn, signOut, useSession } from "next-auth/react"
-import GoogleLogo from "../logos/Google";
-import GithubLogo from "../logos/Github";
 import Image from "next/image";
 
 export default function Pay() {

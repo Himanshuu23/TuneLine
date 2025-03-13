@@ -1,42 +1,39 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 
 let sharedSocket: WebSocket | null = null;
 
 export default function useSocket() {
-  const socketRef = useRef<WebSocket | null>(null);
+  const [socket, setSocket] = useState<WebSocket | null>(sharedSocket);
 
   useEffect(() => {
-    // Check if there is an existing socket
     if (sharedSocket) {
-      socketRef.current = sharedSocket;
-      return; // Return early if socket already exists
+      setSocket(sharedSocket);
+      return;
     }
 
-    // If no existing socket, create a new one
-    const socket = new WebSocket("ws://localhost:11011");
-    sharedSocket = socket;
-    socketRef.current = socket;
+    const ws = new WebSocket("ws://localhost:11011");
+    sharedSocket = ws;
+    setSocket(ws);
 
-    socket.onopen = () => {
+    ws.onopen = () => {
       console.log("WebSocket connection established");
     };
 
-    socket.onclose = () => {
+    ws.onclose = () => {
       console.log("WebSocket connection closed");
-      sharedSocket = null; // Reset on close
+      sharedSocket = null;
     };
 
-    socket.onerror = (error) => {
+    ws.onerror = (error) => {
       console.error("WebSocket error:", error);
     };
 
     return () => {
-      if (socketRef.current?.readyState === WebSocket.OPEN) {
-        socketRef.current.close();
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.close();
       }
-      sharedSocket = null; // Reset sharedSocket on cleanup
     };
-  }, []); // Empty dependency array ensures this effect runs once on mount
+  }, []);
 
-  return socketRef.current;
+  return socket;
 }

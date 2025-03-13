@@ -9,7 +9,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { DialogTrigger } from "@radix-ui/react-dialog";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation"; // Fixed the import to match Next.js 13+ router API
+import { useRouter } from "next/navigation"; 
 import { useEffect, useState } from "react";
 
 export default function Join() {
@@ -28,13 +28,18 @@ export default function Join() {
   }
 
   useEffect(() => {
+    if (!socket) {
+      return
+    }
+
       if(socket) {
         socket.onmessage = async (event) => {
           const message = await JSON.parse(event.data);
+          console.log(message, "this is the message recieved after doing join-room from the frontend")
           switch(message.type) {
             case "join-room":
               console.log(message)
-              router.push(`/room?room_code=${message.roomCode}`); // Updated to work with the new router API
+              router.push(`/room?room_code=${message.roomCode}`);
               break;
           }
         }

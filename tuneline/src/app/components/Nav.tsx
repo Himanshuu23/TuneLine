@@ -23,6 +23,10 @@ export default function Navbar() {
   }
 
   useEffect(() => {
+    if (!socket) {
+      return
+    }
+
     if (socket) {
       socket.onmessage = async (event) => {
         const message = await JSON.parse(event.data);
