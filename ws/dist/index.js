@@ -63,7 +63,7 @@ function joinRoom(roomCode, username, socket) {
         return "Room not found!";
     });
 }
-function insertMusicIntoQueue(roomCode, music, user) {
+function insertMusicIntoQueue(roomCode, music) {
     return __awaiter(this, void 0, void 0, function* () {
         if (ROOMS[roomCode]) {
             const queue = ROOMS[roomCode].queue;
@@ -75,7 +75,7 @@ function insertMusicIntoQueue(roomCode, music, user) {
             else {
                 queue.push(music);
             }
-            return { details: response, message: `${user} added the song ${music.youtubeUrl} into the queue! vote it to play` };
+            return response;
         }
         return "Room not found!";
     });
@@ -169,8 +169,9 @@ wss.on("connection", (socket, request) => {
                     username = message.username;
                     music = message.music;
                     roomCode = message.roomCode;
-                    const result = yield insertMusicIntoQueue(roomCode, music, username);
-                    socket.send(JSON.stringify({ type: "add-music", message: result.message, music: music, details: result.details }));
+                    const result = yield insertMusicIntoQueue(roomCode, music);
+                    yield new Promise(resolve => setTimeout(resolve, 0.000001));
+                    socket.send(JSON.stringify({ type: "add-music", message: `${username} added the song ${result.title} into the queue! vote it to play`, music: music, details: result }));
                     break;
                 case "delete-music":
                     music = message.music;
@@ -192,10 +193,6 @@ wss.on("connection", (socket, request) => {
                     creators = yield getCreators();
                     socket.send(JSON.stringify({ type: "get-creators", response: JSON.stringify(creators) }));
                     break;
-                case "get-data":
-                    const url = message.admin;
-                    const something = yield fetchVideoDetails(url);
-                    socket.send(JSON.stringify({ type: "get-data", response: something }));
             }
         }));
     }

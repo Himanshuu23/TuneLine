@@ -12,10 +12,9 @@ import { useSearchParams } from "next/navigation";
 export default function Queue() {
   const [money, setMoney] = useState<number>(0);
   const [url, setUrl] = useState<string>();
-  const [songs, setSongs] = useState<SongType[]>([
-  { youtubeUrl: "songname", votes: 20, money: 30 },
-  ]);
+  const [songs, setSongs] = useState<SongType[]>([]); // { youtubeUrl: "songname", votes: 20, money: 30 } for testing purpose
   const [roomCode, setRoomCode] = useState<string>("");
+  const [artist, setArtist] = useState<string>("")
 
   const { data: session } = useSession();
   const socket = useSocket();
@@ -27,14 +26,17 @@ export default function Queue() {
     }
 
     if (socket) {
-      socket.addEventListener("message", (event) => {
+      socket.addEventListener("message", async (event) => {
         const message: MessageType = JSON.parse(event.data);
         switch (message.type) {
           case "get-songs":
             if (message.songs) setSongs(message.songs);
             break;
           case "add-music":
-            if (message.music) setSongs((prevSongs:any) => [message.music, ...prevSongs]);
+            if (message.music && message.details) {
+              setSongs((prevSongs:any) => [{youtubeUrl: message.details?.title, votes: message.music?.votes, money: message.music?.money}, ...prevSongs]);
+              setArtist(message.details.artist);
+            }
             break;
           case "delete-music":
             if (message.music) setSongs((prev) => prev.filter((s) => s.youtubeUrl !== message.music?.youtubeUrl));
@@ -54,6 +56,7 @@ export default function Queue() {
 
   function addSong(url: string, money: number, roomCode: string) {
     if (socket && socket.readyState === WebSocket.OPEN) {
+      console.log(roomCode)
       socket?.send(
         JSON.stringify({
           type: "add-music",
@@ -91,9 +94,9 @@ export default function Queue() {
         <h2 className="text-xl font-bold text-white mb-4">Upcoming Songs</h2>
         <div className="overflow-y-auto max-h-[34rem] pr-2">
           <div className="space-y-4">
-            {songs.length > 0 ? 
+            {Array.isArray(songs) && songs.length > 0 ? 
             songs.map((song, idx) => (
-              <Song key={idx} song={song} />
+              <Song key={idx} song={song} artist={artist} />
             )) : 
             <div className="text-center mt-[17rem] mr-10 text-gray-400 text-lg">Add songs</div>}
           </div>

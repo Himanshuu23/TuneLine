@@ -2,7 +2,7 @@ import { useSession } from "next-auth/react"
 import useSocket from "../hooks";
 import { SongType } from "../types";
 
-export default function Song({song}:{song:SongType}) {
+export default function Song({song, artist}:{song:SongType, artist: string}) {
   const { data:session, status } = useSession();
 
   const socket = useSocket();
@@ -20,7 +20,7 @@ export default function Song({song}:{song:SongType}) {
         <span className="text-red-500 font-bold text-lg mr-4">{song.votes}</span>
         <div>
           <h3 className="text-white font-semibold">{song.youtubeUrl}</h3>
-          <p className="text-gray-400 text-sm">Artist Name</p>
+          <p className="text-gray-400 text-sm">{artist}</p>
         </div>
       </div>
       <button onClick={() => voteSong(session?.user?.email || "someone", song.youtubeUrl)} className="text-sm font-bold text-red-500 border border-red-500 px-4 py-2 rounded-full hover:bg-red-500 hover:text-white">

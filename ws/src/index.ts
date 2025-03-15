@@ -73,7 +73,7 @@ async function joinRoom(roomCode: string, username: string, socket: WebSocketWit
     return "Room not found!";
 }
 
-async function insertMusicIntoQueue(roomCode: string, music: musicType, user: string): Promise<any> {
+async function insertMusicIntoQueue(roomCode: string, music: musicType): Promise<any> {
     if (ROOMS[roomCode]) {
         const queue = ROOMS[roomCode].queue;
         const existingMusicIndex = queue.findIndex((song) => song.youtubeUrl === music.youtubeUrl);
@@ -83,7 +83,8 @@ async function insertMusicIntoQueue(roomCode: string, music: musicType, user: st
         } else {
             queue.push(music);
         }
-        return {details: response, message: `${user} added the song ${music.youtubeUrl} into the queue! vote it to play`};
+        
+        return response;
     }
     return "Room not found!";
 }
@@ -180,8 +181,9 @@ wss.on("connection", (socket: WebSocket, request) => {
                 username = message.username;
                 music = message.music;
                 roomCode = message.roomCode;
-                const result = await insertMusicIntoQueue(roomCode, music, username);
-                socket.send(JSON.stringify({ type: "add-music", message: result.message, music: music, details: result.details }));
+                const result = await insertMusicIntoQueue(roomCode, music);
+                await new Promise(resolve => setTimeout(resolve, 0.000001));
+                socket.send(JSON.stringify({ type: "add-music", message: `${username} added the song ${result.title} into the queue! vote it to play`, music: music, details: result }));
                 break;
             case "delete-music":
                 music = message.music;

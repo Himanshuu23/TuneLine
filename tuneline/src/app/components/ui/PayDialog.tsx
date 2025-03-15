@@ -5,7 +5,7 @@ import Image from "next/image";
 export default function Pay({ addSong, url, roomCode, money }: any) {
   const [open, setOpen] = useState(false);
 
-  function handleSong(url: string, money: number, roomCode: string) {
+  function handleSong(url: string, roomCode: string, money: number) {
     addSong(url, money, roomCode); 
     setOpen(false);
   }
