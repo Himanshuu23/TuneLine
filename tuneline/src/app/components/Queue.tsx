@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import Pay from "./ui/PayDialog";
 import { useSearchParams } from "next/navigation";
 
-export default function Queue() {
+export default function Queue({setVideoUrl}: {setVideoUrl: any}) {
   const [money, setMoney] = useState<number>(0);
   const [url, setUrl] = useState<string>();
   const [songs, setSongs] = useState<SongType[]>([]); // { youtubeUrl: "songname", votes: 20, money: 30 } for testing purpose
@@ -19,6 +19,11 @@ export default function Queue() {
   const { data: session } = useSession();
   const socket = useSocket();
   const searchParams = useSearchParams();
+
+  const convertToEmbedURL = (url: string) => {
+    const match = url.match(/(?:youtu\.be\/|v=|\/embed\/|\/v\/|watch\?v=|&v=)([^?&]+)/);
+    return match ? `https://www.youtube.com/embed/${match[1]}?autoplay=1` : "";
+  };  
 
   useEffect(() => {
     if (!socket) {
@@ -36,6 +41,7 @@ export default function Queue() {
             if (message.music && message.details) {
               setSongs((prevSongs:any) => [{youtubeUrl: message.details?.title, votes: message.music?.votes, money: message.music?.money}, ...prevSongs]);
               setArtist(message.details.artist);
+              setVideoUrl(convertToEmbedURL(message.music.youtubeUrl));
             }
             break;
           case "delete-music":

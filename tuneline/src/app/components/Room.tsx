@@ -13,8 +13,9 @@ export default function RoomContainer() {
   const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
   const [isViewOpen, setIsViewOpen] = useState<boolean>(false);
   const [viewOption, setViewOption] = useState<number>(1);
-  const { data: session, status } = useSession();
+  const [videoUrl, setVideoUrl] = useState<string>("");
 
+  const { data: session, status } = useSession();
   const socket = useSocket();
   const searchParams = useSearchParams();
 
@@ -105,13 +106,13 @@ export default function RoomContainer() {
             </div>
           )}
           {viewOption !== 2 && (
-            <div
-              className={`${
-                viewOption === 3 ? "w-full" : "w-1/2"
-              } h-full p-4 flex justify-center items-center`}
-            >
+            <div className={`${viewOption === 3 ? "w-full" : "w-1/2"} h-full p-4 flex justify-center items-center`}>
               <div className="w-full h-full bg-gray-800 rounded-lg overflow-hidden flex justify-center items-center">
-                <video src="/video2.mp4" className="w-full h-full object-cover" controls />
+                <iframe 
+                  src={videoUrl}
+                  className="w-full h-full object-cover" 
+                  allowFullScreen
+                />
               </div>
             </div>
           )}
@@ -214,7 +215,7 @@ export default function RoomContainer() {
           </div>
         </div>
       ) : (
-        <Queue />
+        <Queue setVideoUrl={setVideoUrl} />
       )}
     </div>
   );    
