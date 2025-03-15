@@ -108,7 +108,7 @@ export default function Queue() {
           className="placeholder:text-gray-200 my-4 focus:border-2 focus:border-gray-300 focus:outline-none"
         />
         <button>
-          <Pay addSong={addSong} url={url} roomCode={roomCode} />
+          <Pay addSong={addSong} url={url} roomCode={roomCode} money={money} />
         </button>
       </div>
     </div>
