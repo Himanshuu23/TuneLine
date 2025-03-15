@@ -13,7 +13,7 @@ export default function Queue() {
   const [money, setMoney] = useState<number>(0);
   const [url, setUrl] = useState<string>();
   const [songs, setSongs] = useState<SongType[]>([
-  // { url: "songname", votes: 20, money: 30 },
+  { youtubeUrl: "songname", votes: 20, money: 30 },
   ]);
   const [roomCode, setRoomCode] = useState<string>("");
 
@@ -28,21 +28,19 @@ export default function Queue() {
 
     if (socket) {
       socket.addEventListener("message", (event) => {
-        const message: MessageType = JSON.parse(
-          JSON.stringify(event.data)
-        );
+        const message: MessageType = JSON.parse(event.data);
         switch (message.type) {
           case "get-songs":
             if (message.songs) setSongs(message.songs);
             break;
           case "add-music":
-            if (message.song) songs.unshift(message.song);
+            if (message.music) setSongs((prevSongs:any) => [message.music, ...prevSongs]);
             break;
           case "delete-music":
-            if (message.song) setSongs((prev) => prev.filter((s) => s !== message.song));
+            if (message.music) setSongs((prev) => prev.filter((s) => s.youtubeUrl !== message.music?.youtubeUrl));
             break;
           case "remove-music":
-            if (message.song) setSongs((prev) => prev.filter((s) => s !== message.song));
+            if (message.music) setSongs((prev) => prev.filter((s) => s.youtubeUrl !== message.music?.youtubeUrl));
             break;
         }
       });
@@ -52,7 +50,7 @@ export default function Queue() {
         socket.onmessage = null;
       }
     };
-  }, [socket, songs]);
+  }, [socket]);
 
   function addSong(url: string, money: number, roomCode: string) {
     if (socket && socket.readyState === WebSocket.OPEN) {
@@ -70,14 +68,14 @@ export default function Queue() {
   function getSongs() {
     if (socket && socket.readyState === WebSocket.OPEN) {
       socket?.send(
-        JSON.stringify({ type: "get-songs", admin: session?.user?.email })
+        JSON.stringify({ type: "get-songs", admin: "admin", roomCode: roomCode })
       );
     }
   }
 
   useEffect(() => {
     getSongs();
-  }, [songs]);
+  }, []);
 
   useEffect(() => {
     const roomCode = searchParams.get("room_code");
@@ -109,7 +107,7 @@ export default function Queue() {
           placeholder="Enter music url"
           className="placeholder:text-gray-200 my-4 focus:border-2 focus:border-gray-300 focus:outline-none"
         />
-        <button onClick={() => addSong(url || "", money, roomCode)}>
+        <button>
           <Pay addSong={addSong} url={url} roomCode={roomCode} />
         </button>
       </div>

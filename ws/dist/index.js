@@ -126,6 +126,7 @@ wss.on("connection", (socket, request) => {
     else {
         socket.on("message", (data) => __awaiter(void 0, void 0, void 0, function* () {
             const message = JSON.parse(data.toString());
+            console.log(message);
             let admin, roomCode, username, response, music, details, creators;
             switch (message.type) {
                 case "make-room":

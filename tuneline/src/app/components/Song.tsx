@@ -19,11 +19,11 @@ export default function Song({song}:{song:SongType}) {
       <div className="flex items-center">
         <span className="text-red-500 font-bold text-lg mr-4">{song.votes}</span>
         <div>
-          <h3 className="text-white font-semibold">{song.url}</h3>
+          <h3 className="text-white font-semibold">{song.youtubeUrl}</h3>
           <p className="text-gray-400 text-sm">Artist Name</p>
         </div>
       </div>
-      <button onClick={() => voteSong(session?.user?.email || "someone", song.url)} className="text-sm font-bold text-red-500 border border-red-500 px-4 py-2 rounded-full hover:bg-red-500 hover:text-white">
+      <button onClick={() => voteSong(session?.user?.email || "someone", song.youtubeUrl)} className="text-sm font-bold text-red-500 border border-red-500 px-4 py-2 rounded-full hover:bg-red-500 hover:text-white">
         Vote
       </button>
     </div>

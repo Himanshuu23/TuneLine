@@ -1,7 +1,7 @@
 export type MessageType = {
     type: string
     message: string
-    song?: SongType
+    music?: SongType
     roomCode?: string
     songs?: SongType[]
 }
@@ -9,5 +9,5 @@ export type MessageType = {
 export type SongType = {
     votes: number,
     money: number,
-    url: string
+    youtubeUrl: string
 }

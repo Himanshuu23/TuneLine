@@ -126,11 +126,12 @@ wss.on("connection", (socket: WebSocket, request) => {
   const ip = request.socket.remoteAddress?.replace(/^::ffff:/, '') || "";
   const dontLetHimGo = rateLimitByIp(ip);
 
-  if(dontLetHimGo) { 
+  if(dontLetHimGo) {
     socket.send(JSON.stringify({ type:"rate-limited", message: "Honey! You have been rate limited. Please try again after a while." }));
   } else {
     socket.on("message", async (data) => {
         const message = JSON.parse(data.toString());
+        console.log(message)
         let admin: string, roomCode: string, username: string, response: string | musicType[], music: musicType, details: string, creators: string[];
         switch(message.type) {
             case "make-room":
