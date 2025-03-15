@@ -73,16 +73,17 @@ async function joinRoom(roomCode: string, username: string, socket: WebSocketWit
     return "Room not found!";
 }
 
-async function insertMusicIntoQueue(roomCode: string, music: musicType, user: string): Promise<string> {
+async function insertMusicIntoQueue(roomCode: string, music: musicType, user: string): Promise<any> {
     if (ROOMS[roomCode]) {
         const queue = ROOMS[roomCode].queue;
         const existingMusicIndex = queue.findIndex((song) => song.youtubeUrl === music.youtubeUrl);
+        const response = await fetchVideoDetails(music.youtubeUrl);
         if (existingMusicIndex !== -1) {
             queue[existingMusicIndex].votes = music.votes;
         } else {
             queue.push(music);
         }
-        return `${user} added the song ${music.youtubeUrl} into the queue! vote it to play`;
+        return {details: response, message: `${user} added the song ${music.youtubeUrl} into the queue! vote it to play`};
     }
     return "Room not found!";
 }
@@ -119,6 +120,30 @@ async function closeRoom(roomCode: string): Promise<string> {
     return "Room not found!";
 }
 
+function getYoutubeVideoId(url: string): string | null {
+    const match = url.match(
+      /(?:youtube\.com\/.*v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]{11})/
+    );
+    return match ? match[1] : null;
+  }
+
+async function fetchVideoDetails(url: string) {
+    const videoId = getYoutubeVideoId(url);
+    const API_KEY = "AIzaSyA8TG3tJ3hcgrD6u8iuD0bY3kcOBwYCHk4";
+    const reqUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${API_KEY}`;
+
+    const res = await fetch(reqUrl);
+    const data = await res.json();
+
+    
+    if (data.items.length > 0) {
+        const { title, channelTitle, thumbnails } = data.items[0].snippet;
+        return { title, artist: channelTitle, thumbnail: thumbnails.high.url };
+    }
+
+    return null;
+}
+
 wss.on("connection", (socket: WebSocket, request) => {
   console.log("WebSocket Connection established!");
   socket.on("error", console.error);
@@ -131,7 +156,6 @@ wss.on("connection", (socket: WebSocket, request) => {
   } else {
     socket.on("message", async (data) => {
         const message = JSON.parse(data.toString());
-        console.log(message)
         let admin: string, roomCode: string, username: string, response: string | musicType[], music: musicType, details: string, creators: string[];
         switch(message.type) {
             case "make-room":
@@ -156,8 +180,8 @@ wss.on("connection", (socket: WebSocket, request) => {
                 username = message.username;
                 music = message.music;
                 roomCode = message.roomCode;
-                response = await insertMusicIntoQueue(roomCode, music, username);
-                socket.send(JSON.stringify({ type: "add-music", message: response, music: music }));
+                const result = await insertMusicIntoQueue(roomCode, music, username);
+                socket.send(JSON.stringify({ type: "add-music", message: result.message, music: music, details: result.details }));
                 break;
             case "delete-music":
                 music = message.music;
@@ -177,7 +201,8 @@ wss.on("connection", (socket: WebSocket, request) => {
                 break;
             case "get-creators":
                 creators = await getCreators();
-                socket.send(JSON.stringify({ type: "get-creators", response: JSON.stringify(creators) }))
+                socket.send(JSON.stringify({ type: "get-creators", response: JSON.stringify(creators) }));
+                break;
         }
     });
   }
