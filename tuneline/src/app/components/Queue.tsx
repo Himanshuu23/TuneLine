@@ -23,7 +23,7 @@ export default function Queue({setVideoUrl}: {setVideoUrl: any}) {
   const convertToEmbedURL = (url: string) => {
     const match = url.match(/(?:youtu\.be\/|v=|\/embed\/|\/v\/|watch\?v=|&v=)([^?&]+)/);
     return match ? `https://www.youtube.com/embed/${match[1]}?autoplay=1` : "";
-  };  
+  };
 
   useEffect(() => {
     if (!socket) {

@@ -13,11 +13,36 @@ export default function RoomContainer() {
   const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
   const [isViewOpen, setIsViewOpen] = useState<boolean>(false);
   const [viewOption, setViewOption] = useState<number>(1);
+  const [channelName, setChannelName] = useState<string>("");
+  const [channelProfile, setChannelProfile] = useState<string>("/test.jpg");
   const [videoUrl, setVideoUrl] = useState<string>("");
 
   const { data: session, status } = useSession();
   const socket = useSocket();
   const searchParams = useSearchParams();
+
+  const accessToken = session?.accessToken;
+
+  const fetchChannelDetails = async () => {
+    if (!session?.accessToken) return;
+  
+    const res = await fetch(
+      "https://www.googleapis.com/youtube/v3/channels?part=id,snippet&mine=true",
+      {
+        headers: {
+          Authorization: `Bearer ${session.accessToken}`,
+          Accept: "application/json",
+        },
+      }
+    );
+  
+    const data = await res.json();
+    if (data.items?.length) {
+      const channel = data.items[0].snippet;
+      setChannelName(channel.title);
+      setChannelProfile(channel.thumbnails.default.url);
+    }
+  };  
 
   useEffect(() => {
     if (!socket) {
@@ -70,6 +95,12 @@ export default function RoomContainer() {
     }
   }, [])
 
+  useEffect(() => {
+    if (session?.accessToken) {
+      fetchChannelDetails();
+    }
+  }, [session?.accessToken]);  
+
   return (
     <div className="flex h-screen w-full bg-gray-900">
       <div className="flex flex-col h-full w-[70%] bg-black rounded-xl shadow-lg p-6 relative">
@@ -77,14 +108,14 @@ export default function RoomContainer() {
           <div className="flex items-center gap-3">
             <div className="h-8 w-8 rounded-full bg-gray-700 overflow-hidden">
               <Image
-                src="/test.jpg"
+                src={channelProfile}
                 alt="Penny"
                 className="object-cover w-full h-full"
                 width={300}
                 height={300}
               />
             </div>
-            <span className="text-lg font-medium">Penny Amberton</span>
+            <span className="text-lg font-medium">{channelName}</span>
           </div>
           <div className="text-2xl font-bold">{roomCode}</div>
           <div className="text-lg font-semibold">42:04</div>
