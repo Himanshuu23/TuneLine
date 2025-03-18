@@ -1,4 +1,5 @@
 import express from "express";
+import Redis from "ioredis";
 import { WebSocketServer, WebSocket } from "ws";
 
 type dataType = {
@@ -30,6 +31,8 @@ const httpServer = app.listen(11011, () => {
   console.log(`Server Started at PORT:${11011}`);
 });
 
+const client = new Redis();
+
 const wss = new WebSocketServer({ server: httpServer });
 
 function rateLimitByIp(ip: string): boolean {
@@ -57,6 +60,11 @@ function rateLimitByIp(ip: string): boolean {
         }
     })
     return toBeRateLimited;
+}
+
+async function init() {
+    const result = await client.get("name");
+    console.log(result);
 }
 
 async function makeNewRoom(admin: string, details: string): Promise<string> {
@@ -148,6 +156,7 @@ async function fetchVideoDetails(url: string) {
 wss.on("connection", (socket: WebSocket, request) => {
   console.log("WebSocket Connection established!");
   socket.on("error", console.error);
+  init();
 
   const ip = request.socket.remoteAddress?.replace(/^::ffff:/, '') || "";
   const dontLetHimGo = rateLimitByIp(ip);

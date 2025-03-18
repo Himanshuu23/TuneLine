@@ -13,6 +13,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
+const ioredis_1 = __importDefault(require("ioredis"));
 const ws_1 = require("ws");
 let USERS = [];
 let ROOMS = {};
@@ -20,6 +21,7 @@ const app = (0, express_1.default)();
 const httpServer = app.listen(11011, () => {
     console.log(`Server Started at PORT:${11011}`);
 });
+const client = new ioredis_1.default();
 const wss = new ws_1.WebSocketServer({ server: httpServer });
 function rateLimitByIp(ip) {
     let toBeRateLimited = false;
@@ -46,6 +48,12 @@ function rateLimitByIp(ip) {
         }
     });
     return toBeRateLimited;
+}
+function init() {
+    return __awaiter(this, void 0, void 0, function* () {
+        const result = yield client.get("name");
+        console.log(result);
+    });
 }
 function makeNewRoom(admin, details) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -137,6 +145,7 @@ wss.on("connection", (socket, request) => {
     var _a;
     console.log("WebSocket Connection established!");
     socket.on("error", console.error);
+    init();
     const ip = ((_a = request.socket.remoteAddress) === null || _a === void 0 ? void 0 : _a.replace(/^::ffff:/, '')) || "";
     const dontLetHimGo = rateLimitByIp(ip);
     if (dontLetHimGo) {
