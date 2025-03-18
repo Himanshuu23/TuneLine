@@ -153,10 +153,11 @@ async function fetchVideoDetails(url: string) {
     return null;
 }
 
+init();
+
 wss.on("connection", (socket: WebSocket, request) => {
   console.log("WebSocket Connection established!");
   socket.on("error", console.error);
-  init();
 
   const ip = request.socket.remoteAddress?.replace(/^::ffff:/, '') || "";
   const dontLetHimGo = rateLimitByIp(ip);

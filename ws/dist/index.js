@@ -141,11 +141,11 @@ function fetchVideoDetails(url) {
         return null;
     });
 }
+init();
 wss.on("connection", (socket, request) => {
     var _a;
     console.log("WebSocket Connection established!");
     socket.on("error", console.error);
-    init();
     const ip = ((_a = request.socket.remoteAddress) === null || _a === void 0 ? void 0 : _a.replace(/^::ffff:/, '')) || "";
     const dontLetHimGo = rateLimitByIp(ip);
     if (dontLetHimGo) {
