@@ -148,7 +148,7 @@ async function removeSong(roomCode: string, music: musicType) {
     await client.lpop(`${roomCode}:queue`);
 }
 
-async function getSongs(roomCode: string): Promise<musicType[] | string> {
+async function getSongs(roomCode: string) {
     // if (ROOMS[roomCode]) {
     //     return ROOMS[roomCode].queue;
     // }
@@ -254,7 +254,8 @@ wss.on("connection", (socket: WebSocket, request) => {
             case "delete-music":
                 music = message.music;
                 roomCode = message.roomCode;
-                response = await deleteMusicFromQueue(roomCode, music);
+                // response = await deleteMusicFromQueue(roomCode, music);
+                response = await removeSong(roomCode, music) || "this is the response for the same";
                 socket.send(JSON.stringify({ type: "delete-music", message: response, music: music }));
                 break;
             case "close-room":

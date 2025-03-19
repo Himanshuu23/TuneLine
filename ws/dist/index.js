@@ -227,7 +227,8 @@ wss.on("connection", (socket, request) => {
                 case "delete-music":
                     music = message.music;
                     roomCode = message.roomCode;
-                    response = yield deleteMusicFromQueue(roomCode, music);
+                    // response = await deleteMusicFromQueue(roomCode, music);
+                    response = (yield removeSong(roomCode, music)) || "this is the response for the same";
                     socket.send(JSON.stringify({ type: "delete-music", message: response, music: music }));
                     break;
                 case "close-room":
