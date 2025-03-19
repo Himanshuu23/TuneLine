@@ -60,7 +60,8 @@ function makeNewRoom(admin, details) {
 }
 function joinRoom(roomCode, username, socket) {
     return __awaiter(this, void 0, void 0, function* () {
-        if (ROOMS[roomCode]) {
+        const ROOM = yield client.exists(`${roomCode}`);
+        if (ROOM) {
             socket.roomCode = roomCode;
             return `${username} joined the room!`;
         }

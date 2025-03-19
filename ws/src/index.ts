@@ -71,7 +71,8 @@ async function makeNewRoom(admin: string, details: string): Promise<string> {
 }
 
 async function joinRoom(roomCode: string, username: string, socket: WebSocketWithRoomCode): Promise<string> {
-    if (ROOMS[roomCode]) {
+    const ROOM = await client.exists(`${roomCode}`)
+    if (ROOM) {
         socket.roomCode = roomCode;
         return `${username} joined the room!`;
     }
