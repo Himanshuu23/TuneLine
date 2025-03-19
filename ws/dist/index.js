@@ -17,9 +17,10 @@ const ioredis_1 = __importDefault(require("ioredis"));
 const ws_1 = require("ws");
 let USERS = [];
 let ROOMS = {};
+const PORT = process.env.PORT || 11011;
 const app = (0, express_1.default)();
-const httpServer = app.listen(11011, () => {
-    console.log(`Server Started at PORT:${11011}`);
+const httpServer = app.listen(PORT, () => {
+    console.log(`Server Started at PORT:${PORT}`);
 });
 const client = new ioredis_1.default();
 const wss = new ws_1.WebSocketServer({ server: httpServer });
@@ -163,6 +164,7 @@ function closeRoom(roomCode) {
         // return "Room not found!";
         yield client.del(`${roomCode}`, `${roomCode}:queue`);
         return "Room Closed!";
+        // ALSO ON CLOSING THE ROOM - CLOSE THE WEBSOCKET CONNECTION OF THE USERS IN THE ROOM INCLUDING THE ADMIN
     });
 }
 function getYoutubeVideoId(url) {
@@ -186,6 +188,7 @@ function fetchVideoDetails(url) {
 wss.on("connection", (socket, request) => {
     var _a;
     console.log("WebSocket Connection established!");
+    console.log("new connection from: ", request.socket.remoteAddress);
     socket.on("error", console.error);
     const ip = ((_a = request.socket.remoteAddress) === null || _a === void 0 ? void 0 : _a.replace(/^::ffff:/, '')) || "";
     const dontLetHimGo = rateLimitByIp(ip);
@@ -227,9 +230,14 @@ wss.on("connection", (socket, request) => {
                 case "delete-music":
                     music = message.music;
                     roomCode = message.roomCode;
-                    // response = await deleteMusicFromQueue(roomCode, music);
-                    response = (yield removeSong(roomCode, music)) || "this is the response for the same";
+                    response = yield deleteMusicFromQueue(roomCode, music);
                     socket.send(JSON.stringify({ type: "delete-music", message: response, music: music }));
+                    break;
+                case "remove-song":
+                    music = message.music;
+                    roomCode = message.roomCode;
+                    response = (yield removeSong(roomCode, music)) || "this is the response";
+                    socket.send(JSON.stringify({ type: "remove-song", message: response, music: music }));
                     break;
                 case "close-room":
                     roomCode = message.roomCode;

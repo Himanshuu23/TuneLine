@@ -26,9 +26,11 @@ type WebSocketWithRoomCode = WebSocket & { roomCode?: string };
 let USERS: RateLimitingType[] = [];
 let ROOMS: { [key: string]: dataType } = {};
 
+const PORT = process.env.PORT || 11011;
+
 const app = express();
-const httpServer = app.listen(11011, () => {
-  console.log(`Server Started at PORT:${11011}`);
+const httpServer = app.listen(PORT, () => {
+  console.log(`Server Started at PORT:${PORT}`);
 });
 
 const client = new Redis();
@@ -185,6 +187,7 @@ async function closeRoom(roomCode: string){
 
     await client.del(`${roomCode}`, `${roomCode}:queue`);
     return "Room Closed!"
+    // ALSO ON CLOSING THE ROOM - CLOSE THE WEBSOCKET CONNECTION OF THE USERS IN THE ROOM INCLUDING THE ADMIN
 }
 
 function getYoutubeVideoId(url: string): string | null {
@@ -212,6 +215,7 @@ async function fetchVideoDetails(url: string) {
 
 wss.on("connection", (socket: WebSocket, request) => {
   console.log("WebSocket Connection established!");
+  console.log("new connection from: ", request.socket.remoteAddress)
   socket.on("error", console.error);
 
   const ip = request.socket.remoteAddress?.replace(/^::ffff:/, '') || "";
@@ -254,9 +258,14 @@ wss.on("connection", (socket: WebSocket, request) => {
             case "delete-music":
                 music = message.music;
                 roomCode = message.roomCode;
-                // response = await deleteMusicFromQueue(roomCode, music);
-                response = await removeSong(roomCode, music) || "this is the response for the same";
+                response = await deleteMusicFromQueue(roomCode, music);
                 socket.send(JSON.stringify({ type: "delete-music", message: response, music: music }));
+                break;
+            case "remove-song":
+                music = message.music;
+                roomCode = message.roomCode;
+                response = await removeSong(roomCode, music) || "this is the response";
+                socket.send(JSON.stringify({ type: "remove-song", message: response, music: music }));
                 break;
             case "close-room":
                 roomCode = message.roomCode;
