@@ -68,8 +68,14 @@ function joinRoom(roomCode, username, socket) {
         return "Room not found!";
     });
 }
-function songAlreadyExists(songs, song) {
-    return songs.includes(song);
+function songAlreadyExists(songs, music) {
+    let exists = false;
+    songs.map((song) => {
+        if (song.youtubeUrl === music.youtubeUrl) {
+            exists = true;
+        }
+    });
+    return exists;
 }
 function insertMusicIntoQueue(roomCode, music) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -90,7 +96,7 @@ function insertMusicIntoQueue(roomCode, music) {
         if (songAlreadyExists(parsedSongs, music)) {
             return "song already inside the queue";
         }
-        yield client.rpush(`${roomCode}:queue`, JSON.stringify({ music: music }));
+        yield client.rpush(`${roomCode}:queue`, JSON.stringify(music));
         return response;
     });
 }
@@ -106,9 +112,8 @@ function deleteMusicFromQueue(roomCode, music) {
         if (!songAlreadyExists(parsedSongs, music)) {
             return "song is not even in the queue";
         }
-        const updatedQueue = parsedSongs.filter((song) => song.youtubeUrl !== music.youtubeUrl);
-        if (updatedQueue.length > 0) {
-            yield client.rpush(`${roomCode}:queue`, ...updatedQueue.map((song) => JSON.stringify(song)));
+        if (parsedSongs.length > 0) {
+            yield client.lrem(`${roomCode}:queue`, 1, JSON.stringify(music));
             return "song removed";
         }
         return "song not found or room not found";
@@ -215,8 +220,9 @@ wss.on("connection", (socket, request) => {
                     music = message.music;
                     roomCode = message.roomCode;
                     const result = yield insertMusicIntoQueue(roomCode, music);
+                    // console.log(result)
                     yield new Promise(resolve => setTimeout(resolve, 0.000001));
-                    socket.send(JSON.stringify({ type: "add-music", message: `${username} added the song ${result.title} into the queue! vote it to play`, music: music, details: result }));
+                    socket.send(JSON.stringify({ type: "add-music", message: `${username} added the song result.title into the queue! vote it to play`, music: music, details: result }));
                     break;
                 case "delete-music":
                     music = message.music;

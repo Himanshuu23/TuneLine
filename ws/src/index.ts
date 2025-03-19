@@ -79,8 +79,15 @@ async function joinRoom(roomCode: string, username: string, socket: WebSocketWit
     return "Room not found!";
 }
 
-function songAlreadyExists(songs: musicType[], song: musicType) {
-    return songs.includes(song);
+function songAlreadyExists(songs: any, music: musicType) {
+    let exists = false;
+    songs.map((song: any) => {
+        if (song.youtubeUrl === music.youtubeUrl) {
+            exists = true
+        }
+    })
+
+    return exists;
 }
 
 async function insertMusicIntoQueue(roomCode: string, music: musicType): Promise<any> {
@@ -99,13 +106,13 @@ async function insertMusicIntoQueue(roomCode: string, music: musicType): Promise
 
     // return "Room not found!";
     const songs = await client.lrange(`${roomCode}:queue`, 0, -1)
-    const parsedSongs: musicType[] = songs.map((song) => JSON.parse(song));
+    const parsedSongs:any = songs.map((song) => JSON.parse(song));
     
     if (songAlreadyExists(parsedSongs, music)) {
         return "song already inside the queue"
     }
 
-    await client.rpush(`${roomCode}:queue`, JSON.stringify({ music: music }));
+    await client.rpush(`${roomCode}:queue`, JSON.stringify(music));
     return response;
 }
 
@@ -116,15 +123,14 @@ async function deleteMusicFromQueue(roomCode: string, music: musicType) {
     // }
     // return "Room not found!";
     const songs = await client.lrange(`${roomCode}:queue`, 0, -1)
-    const parsedSongs: musicType[] = songs.map((song) => JSON.parse(song));
-    
+    const parsedSongs: any = songs.map((song) => JSON.parse(song));
+
     if (!songAlreadyExists(parsedSongs, music)) {
         return "song is not even in the queue"
     }
 
-    const updatedQueue = parsedSongs.filter((song) => song.youtubeUrl !== music.youtubeUrl)
-    if (updatedQueue.length > 0) {
-        await client.rpush(`${roomCode}:queue`, ...updatedQueue.map((song) => JSON.stringify(song)));
+    if (parsedSongs.length > 0) {
+        await client.lrem(`${roomCode}:queue`, 1, JSON.stringify(music));
         return "song removed"
     }
 
@@ -241,8 +247,9 @@ wss.on("connection", (socket: WebSocket, request) => {
                 music = message.music;
                 roomCode = message.roomCode;
                 const result = await insertMusicIntoQueue(roomCode, music);
+                // console.log(result)
                 await new Promise(resolve => setTimeout(resolve, 0.000001));
-                socket.send(JSON.stringify({ type: "add-music", message: `${username} added the song ${result.title} into the queue! vote it to play`, music: music, details: result }));
+                socket.send(JSON.stringify({ type: "add-music", message: `${username} added the song result.title into the queue! vote it to play`, music: music, details: result }));
                 break;
             case "delete-music":
                 music = message.music;
