@@ -87,7 +87,7 @@ async function insertMusicIntoQueue(roomCode: string, music: musicType): Promise
     // if (ROOMS[roomCode]) {
     //     const queue = ROOMS[roomCode].queue;
     //     const existingMusicIndex = queue.findIndex((song) => song.youtubeUrl === music.youtubeUrl);
-    //     const response = await fetchVideoDetails(music.youtubeUrl);
+        const response = await fetchVideoDetails(music.youtubeUrl);
     //     if (existingMusicIndex !== -1) {
     //         queue[existingMusicIndex].votes = music.votes;
     //     } else {
@@ -106,6 +106,7 @@ async function insertMusicIntoQueue(roomCode: string, music: musicType): Promise
     }
 
     await client.rpush(`${roomCode}:queue`, JSON.stringify({ music: music }));
+    return response;
 }
 
 async function deleteMusicFromQueue(roomCode: string, music: musicType) {

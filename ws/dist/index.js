@@ -76,7 +76,7 @@ function insertMusicIntoQueue(roomCode, music) {
         // if (ROOMS[roomCode]) {
         //     const queue = ROOMS[roomCode].queue;
         //     const existingMusicIndex = queue.findIndex((song) => song.youtubeUrl === music.youtubeUrl);
-        //     const response = await fetchVideoDetails(music.youtubeUrl);
+        const response = yield fetchVideoDetails(music.youtubeUrl);
         //     if (existingMusicIndex !== -1) {
         //         queue[existingMusicIndex].votes = music.votes;
         //     } else {
@@ -91,6 +91,7 @@ function insertMusicIntoQueue(roomCode, music) {
             return "song already inside the queue";
         }
         yield client.rpush(`${roomCode}:queue`, JSON.stringify({ music: music }));
+        return response;
     });
 }
 function deleteMusicFromQueue(roomCode, music) {
