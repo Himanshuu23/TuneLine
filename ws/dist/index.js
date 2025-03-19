@@ -49,16 +49,12 @@ function rateLimitByIp(ip) {
     });
     return toBeRateLimited;
 }
-function init() {
-    return __awaiter(this, void 0, void 0, function* () {
-        const result = yield client.get("name");
-        console.log(result);
-    });
-}
 function makeNewRoom(admin, details) {
     return __awaiter(this, void 0, void 0, function* () {
         let code = Math.random().toString(36).substring(2, 8);
-        ROOMS[code] = { roomCode: code, queue: [], user: admin, details: details };
+        // ROOMS[code] = { roomCode: code, queue: [], user: admin, details: details };
+        yield client.hmset(`${code}`, { user: admin, createdAt: Date.now() });
+        yield client.rpush('tuneline:creators', JSON.stringify({ creator: admin }));
         return code;
     });
 }
@@ -71,56 +67,95 @@ function joinRoom(roomCode, username, socket) {
         return "Room not found!";
     });
 }
+function songAlreadyExists(songs, song) {
+    return songs.includes(song);
+}
 function insertMusicIntoQueue(roomCode, music) {
     return __awaiter(this, void 0, void 0, function* () {
-        if (ROOMS[roomCode]) {
-            const queue = ROOMS[roomCode].queue;
-            const existingMusicIndex = queue.findIndex((song) => song.youtubeUrl === music.youtubeUrl);
-            const response = yield fetchVideoDetails(music.youtubeUrl);
-            if (existingMusicIndex !== -1) {
-                queue[existingMusicIndex].votes = music.votes;
-            }
-            else {
-                queue.push(music);
-            }
-            return response;
+        // if (ROOMS[roomCode]) {
+        //     const queue = ROOMS[roomCode].queue;
+        //     const existingMusicIndex = queue.findIndex((song) => song.youtubeUrl === music.youtubeUrl);
+        //     const response = await fetchVideoDetails(music.youtubeUrl);
+        //     if (existingMusicIndex !== -1) {
+        //         queue[existingMusicIndex].votes = music.votes;
+        //     } else {
+        //         queue.push(music);
+        //     }
+        //     return response;
+        // }
+        // return "Room not found!";
+        const songs = yield client.lrange(`${roomCode}:queue`, 0, -1);
+        const parsedSongs = songs.map((song) => JSON.parse(song));
+        if (songAlreadyExists(parsedSongs, music)) {
+            return "song already inside the queue";
         }
-        return "Room not found!";
+        yield client.rpush(`${roomCode}:queue`, JSON.stringify({ music: music }));
     });
 }
 function deleteMusicFromQueue(roomCode, music) {
     return __awaiter(this, void 0, void 0, function* () {
-        if (ROOMS[roomCode]) {
-            ROOMS[roomCode].queue = ROOMS[roomCode].queue.filter((song) => song.youtubeUrl !== music.youtubeUrl);
-            return "admin deleted the song";
+        // if (ROOMS[roomCode]) {
+        //     ROOMS[roomCode].queue = ROOMS[roomCode].queue.filter((song) => song.youtubeUrl !== music.youtubeUrl);
+        //     return "admin deleted the song";
+        // }
+        // return "Room not found!";
+        const songs = yield client.lrange(`${roomCode}:queue`, 0, -1);
+        const parsedSongs = songs.map((song) => JSON.parse(song));
+        if (!songAlreadyExists(parsedSongs, music)) {
+            return "song is not even in the queue";
         }
-        return "Room not found!";
+        const updatedQueue = parsedSongs.filter((song) => song.youtubeUrl !== music.youtubeUrl);
+        if (updatedQueue.length > 0) {
+            yield client.rpush(`${roomCode}:queue`, ...updatedQueue.map((song) => JSON.stringify(song)));
+            return "song removed";
+        }
+        return "song not found or room not found";
+    });
+}
+function removeSong(roomCode, music) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const songs = yield client.lrange(`${roomCode}:queue`, 0, -1);
+        const parsedSongs = songs.map((song) => JSON.parse(song));
+        if (!songAlreadyExists(parsedSongs, music)) {
+            return "song is not even in the queue";
+        }
+        yield client.lpop(`${roomCode}:queue`);
     });
 }
 function getSongs(roomCode) {
     return __awaiter(this, void 0, void 0, function* () {
-        if (ROOMS[roomCode]) {
-            return ROOMS[roomCode].queue;
+        // if (ROOMS[roomCode]) {
+        //     return ROOMS[roomCode].queue;
+        // }
+        const songs = yield client.lrange(`${roomCode}:queue`, 0, -1);
+        if (songs.length > 0) {
+            const parsedSongs = songs.map((song) => JSON.parse(song));
+            return parsedSongs;
         }
         return "No songs found or Room not found!";
     });
 }
 function getCreators() {
     return __awaiter(this, void 0, void 0, function* () {
-        let creators = [];
-        for (let i in ROOMS) {
-            creators.push(ROOMS[i].user);
-        }
-        return creators;
+        // let creators = []
+        // for (let i in ROOMS) {
+        //     creators.push(ROOMS[i].user)
+        // }
+        // return creators
+        const creators = yield client.lrange('tuneline:creators', 0, -1);
+        const parsedCreators = creators.map((creator) => JSON.parse(creator));
+        return parsedCreators;
     });
 }
 function closeRoom(roomCode) {
     return __awaiter(this, void 0, void 0, function* () {
-        if (ROOMS[roomCode]) {
-            delete ROOMS[roomCode];
-            return `Room Closed!`;
-        }
-        return "Room not found!";
+        // if (ROOMS[roomCode]) {
+        //     delete ROOMS[roomCode];
+        //     return `Room Closed!`;
+        // }
+        // return "Room not found!";
+        yield client.del(`${roomCode}`, `${roomCode}:queue`);
+        return "Room Closed!";
     });
 }
 function getYoutubeVideoId(url) {
@@ -141,7 +176,6 @@ function fetchVideoDetails(url) {
         return null;
     });
 }
-init();
 wss.on("connection", (socket, request) => {
     var _a;
     console.log("WebSocket Connection established!");

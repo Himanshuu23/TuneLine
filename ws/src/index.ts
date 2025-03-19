@@ -62,14 +62,11 @@ function rateLimitByIp(ip: string): boolean {
     return toBeRateLimited;
 }
 
-async function init() {
-    const result = await client.get("name");
-    console.log(result);
-}
-
 async function makeNewRoom(admin: string, details: string): Promise<string> {
     let code = Math.random().toString(36).substring(2, 8);
-    ROOMS[code] = { roomCode: code, queue: [], user: admin, details: details };
+    // ROOMS[code] = { roomCode: code, queue: [], user: admin, details: details };
+    await client.hmset(`${code}`, { user: admin, createdAt: Date.now() });
+    await client.rpush('tuneline:creators', JSON.stringify({ creator: admin }));
     return code;
 }
 
@@ -81,52 +78,105 @@ async function joinRoom(roomCode: string, username: string, socket: WebSocketWit
     return "Room not found!";
 }
 
-async function insertMusicIntoQueue(roomCode: string, music: musicType): Promise<any> {
-    if (ROOMS[roomCode]) {
-        const queue = ROOMS[roomCode].queue;
-        const existingMusicIndex = queue.findIndex((song) => song.youtubeUrl === music.youtubeUrl);
-        const response = await fetchVideoDetails(music.youtubeUrl);
-        if (existingMusicIndex !== -1) {
-            queue[existingMusicIndex].votes = music.votes;
-        } else {
-            queue.push(music);
-        }
-        
-        return response;
-    }
-    return "Room not found!";
+function songAlreadyExists(songs: musicType[], song: musicType) {
+    return songs.includes(song);
 }
 
-async function deleteMusicFromQueue(roomCode: string, music: musicType): Promise<string> {
-    if (ROOMS[roomCode]) {
-        ROOMS[roomCode].queue = ROOMS[roomCode].queue.filter((song) => song.youtubeUrl !== music.youtubeUrl);
-        return "admin deleted the song";
+async function insertMusicIntoQueue(roomCode: string, music: musicType): Promise<any> {
+    // if (ROOMS[roomCode]) {
+    //     const queue = ROOMS[roomCode].queue;
+    //     const existingMusicIndex = queue.findIndex((song) => song.youtubeUrl === music.youtubeUrl);
+    //     const response = await fetchVideoDetails(music.youtubeUrl);
+    //     if (existingMusicIndex !== -1) {
+    //         queue[existingMusicIndex].votes = music.votes;
+    //     } else {
+    //         queue.push(music);
+    //     }
+        
+    //     return response;
+    // }
+
+    // return "Room not found!";
+    const songs = await client.lrange(`${roomCode}:queue`, 0, -1)
+    const parsedSongs: musicType[] = songs.map((song) => JSON.parse(song));
+    
+    if (songAlreadyExists(parsedSongs, music)) {
+        return "song already inside the queue"
     }
-    return "Room not found!";
+
+    await client.rpush(`${roomCode}:queue`, JSON.stringify({ music: music }));
+}
+
+async function deleteMusicFromQueue(roomCode: string, music: musicType) {
+    // if (ROOMS[roomCode]) {
+    //     ROOMS[roomCode].queue = ROOMS[roomCode].queue.filter((song) => song.youtubeUrl !== music.youtubeUrl);
+    //     return "admin deleted the song";
+    // }
+    // return "Room not found!";
+    const songs = await client.lrange(`${roomCode}:queue`, 0, -1)
+    const parsedSongs: musicType[] = songs.map((song) => JSON.parse(song));
+    
+    if (!songAlreadyExists(parsedSongs, music)) {
+        return "song is not even in the queue"
+    }
+
+    const updatedQueue = parsedSongs.filter((song) => song.youtubeUrl !== music.youtubeUrl)
+    if (updatedQueue.length > 0) {
+        await client.rpush(`${roomCode}:queue`, ...updatedQueue.map((song) => JSON.stringify(song)));
+        return "song removed"
+    }
+
+    return "song not found or room not found"
+}
+
+async function removeSong(roomCode: string, music: musicType) {
+    const songs = await client.lrange(`${roomCode}:queue`, 0, -1)
+    const parsedSongs: musicType[] = songs.map((song) => JSON.parse(song));
+    
+    if (!songAlreadyExists(parsedSongs, music)) {
+        return "song is not even in the queue"
+    }
+
+    await client.lpop(`${roomCode}:queue`);
 }
 
 async function getSongs(roomCode: string): Promise<musicType[] | string> {
-    if (ROOMS[roomCode]) {
-        return ROOMS[roomCode].queue;
+    // if (ROOMS[roomCode]) {
+    //     return ROOMS[roomCode].queue;
+    // }
+
+    const songs = await client.lrange(`${roomCode}:queue`, 0, -1);
+    if (songs.length > 0) {
+        const parsedSongs = songs.map((song) => JSON.parse(song));
+        return parsedSongs;
     }
+
     return "No songs found or Room not found!";
 }
 
 async function getCreators() {
-    let creators = []
-    for (let i in ROOMS) {
-        creators.push(ROOMS[i].user)
-    }
+    // let creators = []
+    // for (let i in ROOMS) {
+    //     creators.push(ROOMS[i].user)
+    // }
 
-    return creators
+    // return creators
+
+    const creators = await client.lrange('tuneline:creators', 0, -1);
+    const parsedCreators = creators.map((creator) => JSON.parse(creator));
+
+    return parsedCreators;
 }
 
-async function closeRoom(roomCode: string): Promise<string> {
-    if (ROOMS[roomCode]) {
-        delete ROOMS[roomCode];
-        return `Room Closed!`;
-    }
-    return "Room not found!";
+async function closeRoom(roomCode: string){
+    // if (ROOMS[roomCode]) {
+    //     delete ROOMS[roomCode];
+    //     return `Room Closed!`;
+    // }
+    // return "Room not found!";
+
+    await client.del(`${roomCode}`, `${roomCode}:queue`);
+    return "Room Closed!"
 }
 
 function getYoutubeVideoId(url: string): string | null {
@@ -143,7 +193,6 @@ async function fetchVideoDetails(url: string) {
 
     const res = await fetch(reqUrl);
     const data = await res.json();
-
     
     if (data.items.length > 0) {
         const { title, channelTitle, thumbnails } = data.items[0].snippet;
@@ -152,8 +201,6 @@ async function fetchVideoDetails(url: string) {
 
     return null;
 }
-
-init();
 
 wss.on("connection", (socket: WebSocket, request) => {
   console.log("WebSocket Connection established!");
