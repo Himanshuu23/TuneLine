@@ -35,7 +35,9 @@ const socialMediaSchema = z.object({
 
 export default function Create() {
   const { data: session } = useSession();
-  const [ytUrl, setYtUrl] = useState<string>("");
+  const [ytUrl, setYtUrl] = useState<string>(""); // url of the stream which would be played in the room later
+  const [channelName, setChannelName] = useState<string>("");
+  const [channelProfile, setChannelProfile] = useState<string>("/test.jpg");
 
   const socket = useSocket();
   const router = useRouter();
@@ -54,10 +56,31 @@ export default function Create() {
     createRoom(session?.user?.email || "");
   };  
 
+  const fetchChannelDetails = async () => {
+    if (!session?.accessToken) return;
+  
+    const res = await fetch(
+      "https://www.googleapis.com/youtube/v3/channels?part=id,snippet&mine=true",
+      {
+        headers: {
+          Authorization: `Bearer ${session.accessToken}`,
+          Accept: "application/json",
+        },
+      }
+    );
+  
+    const data = await res.json();
+    if (data.items?.length) {
+      const channel = data.items[0].snippet;
+      setChannelName(channel.title);
+      setChannelProfile(channel.thumbnails.default.url);
+    }
+  };
+
   function createRoom(email: string) {
     if (socket && socket.readyState === WebSocket.OPEN) {
       socket.send(
-        JSON.stringify({ type: "make-room", username: email, details: ytUrl })
+        JSON.stringify({ type: "make-room", details: { name: channelName, profilePic: channelProfile, videoUrl: ytUrl } })
       );
     } else {
       console.error("WebSocket is NOT Open!");
@@ -69,6 +92,7 @@ export default function Create() {
       socket.addEventListener("message", (event) => {
         const message = JSON.parse(event.data);
         if (message.type === "make-room") {
+          document.cookie = `stream=${encodeURIComponent(message.videoUrl)}; path=/; max-age=10`;
           router.push(`/room?room_code=${message.roomCode}`);
         }
       });

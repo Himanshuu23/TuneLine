@@ -21,10 +21,10 @@ type RateLimitingType = {
     time: number 
 };
 
-type WebSocketWithRoomCode = WebSocket & { roomCode?: string };
+type WebSocketWithRoomCode = WebSocket & { roomCode?: string, id: string };
 
 let USERS: RateLimitingType[] = [];
-let ROOMS: { [key: string]: dataType } = {};
+let ACTIVE_SOCKETS = new Map<string, WebSocketWithRoomCode>();
 
 const PORT = process.env.PORT || 11011;
 
@@ -64,21 +64,29 @@ function rateLimitByIp(ip: string): boolean { // We'll do this using nginx only 
     return toBeRateLimited;
 }
 
-async function makeNewRoom(admin: string, details: string): Promise<string> {
+async function makeNewRoom(details: any, socket: WebSocketWithRoomCode) {
     let code = Math.random().toString(36).substring(2, 8);
-    // ROOMS[code] = { roomCode: code, queue: [], user: admin, details: details };
-    await client.hmset(`${code}`, { user: admin, createdAt: Date.now() });
-    await client.rpush('tuneline:creators', JSON.stringify({ creator: admin }));
-    return code;
+
+    await client.hmset(`${code}`, { user: details.name, createdAt: Date.now() });
+    await client.hmset(`${code}:sockets`, { socketId: socket.id })
+    await client.rpush('tuneline:creators', JSON.stringify({ creator: details.name, channelProfile: details.profilePic }));
+    
+    ACTIVE_SOCKETS.set(socket.id, socket);
+
+    return JSON.stringify({ roomCode: code, message: "Room Created!", videoUrl: details.videoUrl });
 }
 
-async function joinRoom(roomCode: string, username: string, socket: WebSocketWithRoomCode): Promise<string> {
-    const ROOM = await client.exists(`${roomCode}`)
+async function joinRoom(roomCode: string, username: string, socket: WebSocketWithRoomCode) {
+    const ROOM = await client.exists(`${roomCode}`);
+    await client.hmset(`${roomCode}:sockets`, { socketId: socket.id })
+    ACTIVE_SOCKETS.set(socket.id, socket);
+
     if (ROOM) {
         socket.roomCode = roomCode;
-        return `${username} joined the room!`;
+        return JSON.stringify({ message: `${username} joined the room!` });
     }
-    return "Room not found!";
+    
+    return JSON.stringify({ message: "Invalid room code!" });
 }
 
 function songAlreadyExists(songs: any, music: musicType) {
@@ -93,101 +101,58 @@ function songAlreadyExists(songs: any, music: musicType) {
 }
 
 async function insertMusicIntoQueue(roomCode: string, music: musicType): Promise<any> {
-    // if (ROOMS[roomCode]) {
-    //     const queue = ROOMS[roomCode].queue;
-    //     const existingMusicIndex = queue.findIndex((song) => song.youtubeUrl === music.youtubeUrl);
-        const response = await fetchVideoDetails(music.youtubeUrl);
-    //     if (existingMusicIndex !== -1) {
-    //         queue[existingMusicIndex].votes = music.votes;
-    //     } else {
-    //         queue.push(music);
-    //     }
-        
-    //     return response;
-    // }
+    const response:any = await fetchVideoDetails(music.youtubeUrl);
+    const score = music.money * 1e6 + music.votes
 
-    // return "Room not found!";
-    const songs = await client.lrange(`${roomCode}:queue`, 0, -1)
-    const parsedSongs:any = songs.map((song) => JSON.parse(song));
-    
-    if (songAlreadyExists(parsedSongs, music)) {
-        return "song already inside the queue"
-    }
-
-    await client.rpush(`${roomCode}:queue`, JSON.stringify(music));
-    return response;
+    await client.zadd(`${roomCode}:queue`, score, JSON.stringify(music))
+    return response
 }
 
-async function deleteMusicFromQueue(roomCode: string, music: musicType) {
-    // if (ROOMS[roomCode]) {
-    //     ROOMS[roomCode].queue = ROOMS[roomCode].queue.filter((song) => song.youtubeUrl !== music.youtubeUrl);
-    //     return "admin deleted the song";
-    // }
-    // return "Room not found!";
-    const songs = await client.lrange(`${roomCode}:queue`, 0, -1)
-    const parsedSongs: any = songs.map((song) => JSON.parse(song));
+async function getHighestPrioritySong(roomCode: string) {
+    const result:any = await client.zrevrange(`${roomCode}:queue`, 0, 0)
 
-    if (!songAlreadyExists(parsedSongs, music)) {
-        return "song is not even in the queue"
-    }
-
-    if (parsedSongs.length > 0) {
-        await client.lrem(`${roomCode}:queue`, 1, JSON.stringify(music));
-        return "song removed"
-    }
-
-    return "song not found or room not found"
+    return JSON.parse(result[0])
 }
 
 async function removeSong(roomCode: string, music: musicType) {
-    const songs = await client.lrange(`${roomCode}:queue`, 0, -1)
-    const parsedSongs: musicType[] = songs.map((song) => JSON.parse(song));
+    const result = await client.zrange(`${roomCode}:queue`, 0, 0)
+    const parsedSongs = result.map((song) => JSON.parse(song))
     
-    if (!songAlreadyExists(parsedSongs, music)) {
-        return "song is not even in the queue"
+    if (parsedSongs.length > 0 && !songAlreadyExists(parsedSongs, music)) {
+        return JSON.stringify({ message: "song is not even in the queue" })
     }
 
-    await client.lpop(`${roomCode}:queue`);
+    await client.zrem(`${roomCode}:queue`, result[0])
+    return JSON.stringify({ message: "song removed!" })
 }
 
 async function getSongs(roomCode: string) {
-    // if (ROOMS[roomCode]) {
-    //     return ROOMS[roomCode].queue;
-    // }
+    const songs = await client.zrevrange(`${roomCode}:queue`, 0, -1, "WITHSCORES");
+    const parsedSongs = songs.map((song) => JSON.parse(song))
 
-    const songs = await client.lrange(`${roomCode}:queue`, 0, -1);
-    if (songs.length > 0) {
-        const parsedSongs = songs.map((song) => JSON.parse(song));
-        return parsedSongs;
-    }
-
-    return "No songs found or Room not found!";
+    return JSON.stringify({ response: parsedSongs })
 }
 
 async function getCreators() { // also store channel name maybe and also their channel pfp to show in the search bar would look amazing
-    // let creators = []
-    // for (let i in ROOMS) {
-    //     creators.push(ROOMS[i].user)
-    // }
-
-    // return creators
-
     const creators = await client.lrange('tuneline:creators', 0, -1);
     const parsedCreators = creators.map((creator) => JSON.parse(creator));
 
-    return parsedCreators;
+    return JSON.stringify({ response: parsedCreators })
 }
 
-async function closeRoom(roomCode: string){
-    // if (ROOMS[roomCode]) {
-    //     delete ROOMS[roomCode];
-    //     return `Room Closed!`;
-    // }
-    // return "Room not found!";
+async function closeRoom(roomCode: string, socket: WebSocketWithRoomCode){
+    const socketIds = await client.smembers(`${roomCode}:sockets`);
+    for (const socketId of socketIds) {
+        const socket = ACTIVE_SOCKETS.get(socketId);
+        if (socket) {
+            socket.close();
+            ACTIVE_SOCKETS.delete(socketId);
+        }
+    }
 
-    await client.del(`${roomCode}`, `${roomCode}:queue`);
-    return "Room Closed!"
-    // ALSO ON CLOSING THE ROOM - CLOSE THE WEBSOCKET CONNECTION OF THE USERS IN THE ROOM INCLUDING THE ADMIN
+    await client.del(`${roomCode}`, `${roomCode}:queue`, `${roomCode}:sockets`);
+
+    return JSON.stringify({ message: "Room Closed!" })
 }
 
 function getYoutubeVideoId(url: string): string | null {
@@ -207,6 +172,7 @@ async function fetchVideoDetails(url: string) {
     
     if (data.items.length > 0) {
         const { title, channelTitle, thumbnails } = data.items[0].snippet;
+
         return { title, artist: channelTitle, thumbnail: thumbnails.high.url };
     }
 
@@ -215,7 +181,7 @@ async function fetchVideoDetails(url: string) {
 
 wss.on("connection", (socket: WebSocket, request) => {
   console.log("WebSocket Connection established!");
-  console.log("new connection from: ", request.socket.remoteAddress)
+//   console.log("new connection from: ", request.socket.remoteAddress) -> for nginx testing
   socket.on("error", console.error);
 
   const ip = request.socket.remoteAddress?.replace(/^::ffff:/, '') || "";
@@ -226,13 +192,12 @@ wss.on("connection", (socket: WebSocket, request) => {
   } else {
     socket.on("message", async (data) => {
         const message = JSON.parse(data.toString());
-        let admin: string, roomCode: string, username: string, response: string | musicType[], music: musicType, details: string, creators: string[];
+        let admin: string, roomCode: string, username: string, response: string | musicType[], music: musicType, creators: string[], details: any;
         switch(message.type) {
             case "make-room":
-                admin = message.username;
-                details = message.details
-                roomCode = await makeNewRoom(admin, details);
-                response = await joinRoom(roomCode, admin, socket as WebSocketWithRoomCode);
+                details = message.details;
+                roomCode = await makeNewRoom(details, socket as WebSocketWithRoomCode);
+                response = await joinRoom(roomCode, details.name, socket as WebSocketWithRoomCode);
                 socket.send(JSON.stringify({ type:"make-room", message: "created-room", roomCode: roomCode, response: response }));
                 break;
             case "join-room":
@@ -258,7 +223,7 @@ wss.on("connection", (socket: WebSocket, request) => {
             case "delete-music":
                 music = message.music;
                 roomCode = message.roomCode;
-                response = await deleteMusicFromQueue(roomCode, music);
+                response = await removeSong(roomCode, music);
                 socket.send(JSON.stringify({ type: "delete-music", message: response, music: music }));
                 break;
             case "remove-song":
@@ -269,7 +234,7 @@ wss.on("connection", (socket: WebSocket, request) => {
                 break;
             case "close-room":
                 roomCode = message.roomCode;
-                response = await closeRoom(roomCode);
+                response = await closeRoom(roomCode, socket as WebSocketWithRoomCode);
                 socket.send(JSON.stringify({ type: "close-room", message: response }));
                 break;
             case "get-songs":
@@ -278,9 +243,13 @@ wss.on("connection", (socket: WebSocket, request) => {
                 socket.send(JSON.stringify({ type:"get-songs", songs: response }));
                 break;
             case "get-creators":
-                creators = await getCreators();
+                creators = JSON.parse(await getCreators()).response;
                 socket.send(JSON.stringify({ type: "get-creators", response: JSON.stringify(creators) }));
                 break;
+            case "get-highest":
+                roomCode = message.roomCode;
+                response = await getHighestPrioritySong(roomCode);
+                socket.send(JSON.stringify({ response: response }))
         }
     });
   }

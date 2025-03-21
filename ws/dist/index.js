@@ -92,12 +92,18 @@ function insertMusicIntoQueue(roomCode, music) {
         //     return response;
         // }
         // return "Room not found!";
-        const songs = yield client.lrange(`${roomCode}:queue`, 0, -1);
-        const parsedSongs = songs.map((song) => JSON.parse(song));
-        if (songAlreadyExists(parsedSongs, music)) {
-            return "song already inside the queue";
-        }
-        yield client.rpush(`${roomCode}:queue`, JSON.stringify(music));
+        // **
+        // const songs = await client.lrange(`${roomCode}:queue`, 0, -1)
+        // const parsedSongs:any = songs.map((song) => JSON.parse(song));
+        // console.log("songs", songs);
+        // console.log("parsed-songs", parsedSongs);
+        // if (parsedSongs.length > 0 && songAlreadyExists(parsedSongs, music)) {
+        //     return "song already inside the queue"
+        // }
+        // await client.rpush(`${roomCode}:queue`, JSON.stringify(music));
+        // return response;
+        const score = music.money * 1e6 + music.votes;
+        yield client.zadd(`${roomCode}:queue`, score, JSON.stringify(music));
         return response;
     });
 }
@@ -110,7 +116,7 @@ function deleteMusicFromQueue(roomCode, music) {
         // return "Room not found!";
         const songs = yield client.lrange(`${roomCode}:queue`, 0, -1);
         const parsedSongs = songs.map((song) => JSON.parse(song));
-        if (!songAlreadyExists(parsedSongs, music)) {
+        if (parsedSongs.length > 0 && !songAlreadyExists(parsedSongs, music)) {
             return "song is not even in the queue";
         }
         if (parsedSongs.length > 0) {
@@ -120,14 +126,27 @@ function deleteMusicFromQueue(roomCode, music) {
         return "song not found or room not found";
     });
 }
+function getHighestPrioritySong(roomCode) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const result = yield client.zrevrange(`${roomCode}:queue`, 0, 0);
+        return JSON.parse(result[0]);
+    });
+}
 function removeSong(roomCode, music) {
     return __awaiter(this, void 0, void 0, function* () {
-        const songs = yield client.lrange(`${roomCode}:queue`, 0, -1);
-        const parsedSongs = songs.map((song) => JSON.parse(song));
-        if (!songAlreadyExists(parsedSongs, music)) {
-            return "song is not even in the queue";
-        }
-        yield client.lpop(`${roomCode}:queue`);
+        // const songs = await client.lrange(`${roomCode}:queue`, 0, -1)
+        // const parsedSongs: musicType[] = songs.map((song) => JSON.parse(song));
+        // if (parsedSongs.length > 0 && !songAlreadyExists(parsedSongs, music)) {
+        //     return "song is not even in the queue"
+        // }
+        // await client.lpop(`${roomCode}:queue`);
+        // **
+        const duration = 150; // 2:30 - length of the song, ideally we would get it by fetching the details of the video while adding the song and make it a property type
+        const result = yield client.zrange(`${roomCode}:queue`, 0, 0);
+        setTimeout(() => {
+            client.zrem(`${roomCode}:queue`, result[0]);
+        }, duration * 1000);
+        return "song removed";
     });
 }
 function getSongs(roomCode) {
@@ -135,12 +154,19 @@ function getSongs(roomCode) {
         // if (ROOMS[roomCode]) {
         //     return ROOMS[roomCode].queue;
         // }
-        const songs = yield client.lrange(`${roomCode}:queue`, 0, -1);
-        if (songs.length > 0) {
-            const parsedSongs = songs.map((song) => JSON.parse(song));
-            return parsedSongs;
+        // const songs = await client.lrange(`${roomCode}:queue`, 0, -1);
+        // if (songs.length > 0) {
+        //     const parsedSongs = songs.map((song) => JSON.parse(song));
+        //     return parsedSongs;
+        // }
+        // return "No songs found or Room not found!";
+        // **
+        const songs = yield client.zrevrange(`${roomCode}:queue`, 0, -1, "WITHSCORES");
+        const parsedSongs = [];
+        for (let i = 0; i < songs.length; i += 2) {
+            parsedSongs.push(Object.assign(Object.assign({}, JSON.parse(songs[i])), { score: Number(songs[i + 1]) }));
         }
-        return "No songs found or Room not found!";
+        return parsedSongs;
     });
 }
 function getCreators() {
@@ -188,7 +214,7 @@ function fetchVideoDetails(url) {
 wss.on("connection", (socket, request) => {
     var _a;
     console.log("WebSocket Connection established!");
-    console.log("new connection from: ", request.socket.remoteAddress);
+    //   console.log("new connection from: ", request.socket.remoteAddress)
     socket.on("error", console.error);
     const ip = ((_a = request.socket.remoteAddress) === null || _a === void 0 ? void 0 : _a.replace(/^::ffff:/, '')) || "";
     const dontLetHimGo = rateLimitByIp(ip);
@@ -253,6 +279,10 @@ wss.on("connection", (socket, request) => {
                     creators = yield getCreators();
                     socket.send(JSON.stringify({ type: "get-creators", response: JSON.stringify(creators) }));
                     break;
+                case "get-highest":
+                    roomCode = message.roomCode;
+                    response = yield getHighestPrioritySong(roomCode);
+                    socket.send(JSON.stringify({ response: response }));
             }
         }));
     }

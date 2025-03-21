@@ -21,9 +21,7 @@ export default function RoomContainer() {
   const socket = useSocket();
   const searchParams = useSearchParams();
 
-  const accessToken = session?.accessToken;
-
-  const fetchChannelDetails = async () => {
+  const fetchChannelDetails = async () => {  // FETCH THESE FROM THE ROUTE FOR /CREATORS USING THE CHANNEL NAME  
     if (!session?.accessToken) return;
   
     const res = await fetch(
@@ -42,7 +40,7 @@ export default function RoomContainer() {
       setChannelName(channel.title);
       setChannelProfile(channel.thumbnails.default.url);
     }
-  };  
+  };
 
   useEffect(() => {
     if (!socket) {
@@ -97,6 +95,9 @@ export default function RoomContainer() {
 
   useEffect(() => {
     if (session?.accessToken) {
+      const value = document.cookie.split('; ').find(row => row.startsWith("steam" + '='))?.split('=')[1];
+      document.cookie = `${name}=; path=/; max-age=0`;
+      value && setVideoUrl(decodeURIComponent(value))
       fetchChannelDetails();
     }
   }, [session?.accessToken]);  
