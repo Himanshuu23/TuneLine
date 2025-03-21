@@ -133,7 +133,7 @@ export default function RoomContainer() {
               } h-full flex justify-center items-center`}
             >
               <div className="w-full h-full bg-gray-700 rounded-lg overflow-hidden">
-                <video src="/video1.mp4" className="w-full h-full object-cover" controls />
+                <video src="/" className="w-full h-full object-cover" controls />
               </div>
             </div>
           )}

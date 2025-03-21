@@ -14,7 +14,7 @@ const tiers = [
     name: 'Pro',
     id: 'tier-pro',
     href: '#',
-    priceMonthly: '$39.99',
+    priceMonthly: '$9.99',
     description: 'A comprehensive plan for professionals and top-tier users.',
     features: [
       'Queue up to 75 songs',
@@ -28,7 +28,7 @@ const tiers = [
     name: 'Plus',
     id: 'tier-plus',
     href: '#',
-    priceMonthly: '$19.99',
+    priceMonthly: '$4.99',
     description: 'Enhanced features for more engagement and better experience.',
     features: ['Queue up to 35 songs', "View the streamer’s stream + song's video", 'Advanced chat options'],
     featured: false,

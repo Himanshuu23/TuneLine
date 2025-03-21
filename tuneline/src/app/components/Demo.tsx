@@ -1,11 +1,11 @@
 import Video from './Video';
-import Other from './Other';
+import Other from './Feats';
 
 export default function Demo() {
   return (
     <div id='demo'>
-      <Video />
       <Other />
+      <Video />
     </div>
   );
 }
