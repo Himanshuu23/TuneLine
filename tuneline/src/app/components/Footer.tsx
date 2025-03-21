@@ -5,7 +5,7 @@ export default function Footer() {
         <div className="md:flex md:justify-between">
           <div className="mb-6 md:mb-0">
               <a href="https://tuneline.com/" className="flex items-center">
-                  <img src="https://flowbite.com/docs/images/logo.svg" className="h-8 me-3" alt="TuneLine Logo" />
+                  <p className="text-white mx-2 text-3xl font-semibold select-none">🎶</p>
                   <span className="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">TuneLine</span>
               </a>
           </div>
