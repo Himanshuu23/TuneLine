@@ -12,7 +12,7 @@ export default function Hero() {
             <div className="flex flex-col w-full h-full pt-32 pl-12 pr-12 relative z-10">
                 <h1 className="text-6xl font-medium break-words p-6 max-w-xl w-full">Viewers play what they love</h1>
                 <p className="p-5 pb-0 my-2 text-lg font-medium break-words max-w-xl text-gray-300">Stream live or watch your favorite creator. <br/>
-                    Queue in your favorite songs and let the fun begin!
+                    Queue in your favorite videos and let the fun begin!
                 </p>
                 <div>
                     <Button className="m-4 px-6 py-3 h-12 rounded-full text-lg" variant="secondary">{TEXT1}</Button>

@@ -21,7 +21,7 @@ export default function Login() {
   if (session) {
     return (
       <div>
-        <button onClick={() => signOut()}>Logout</button>
+        <button className="px-3 py-2 text-sm mb-2 font-medium text-white bg-black rounded-full hover:bg-gray-900" onClick={() => signOut()}>Logout</button>
       </div>
     );
   } 
@@ -29,7 +29,7 @@ export default function Login() {
   return (
   
   <Dialog>
-      <DialogTrigger className="px-4 py-2 text-sm font-medium text-gray-800 bg-gray-200 border border-gray-300 rounded-full hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"> 
+      <DialogTrigger className="px-4 h-8 text-sm font-medium text-gray-800 bg-gray-200 border border-gray-300 rounded-full hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"> 
         Login
       </DialogTrigger>
       <DialogContent className="bg-black flex justify-between">

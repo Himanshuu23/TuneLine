@@ -37,7 +37,7 @@ const client = new Redis();
 
 const wss = new WebSocketServer({ server: httpServer });
 
-function rateLimitByIp(ip: string): boolean {
+function rateLimitByIp(ip: string): boolean { // We'll do this using nginx only as it is much more simpler
     let toBeRateLimited = false;
     USERS.forEach((user) => {
         if(user.ip === ip) {
@@ -164,7 +164,7 @@ async function getSongs(roomCode: string) {
     return "No songs found or Room not found!";
 }
 
-async function getCreators() {
+async function getCreators() { // also store channel name maybe and also their channel pfp to show in the search bar would look amazing
     // let creators = []
     // for (let i in ROOMS) {
     //     creators.push(ROOMS[i].user)
