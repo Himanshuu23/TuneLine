@@ -15,6 +15,7 @@ export default function Queue({setVideoUrl}: {setVideoUrl: any}) {
   const [songs, setSongs] = useState<SongType[]>([]); // { youtubeUrl: "songname", votes: 20, money: 30 } for testing purpose
   const [roomCode, setRoomCode] = useState<string>("");
   const [artist, setArtist] = useState<string>("")
+  const [currentlyPlayingSong, setCurrentlyPlayingSong] = useState<SongType | null>(null);
 
   const { data: session } = useSession();
   const socket = useSocket();
@@ -26,7 +27,7 @@ export default function Queue({setVideoUrl}: {setVideoUrl: any}) {
   };
 
   useEffect(() => {
-    if (!socket) {
+    if (!socket || !roomCode) {
       return
     }
 
@@ -35,20 +36,61 @@ export default function Queue({setVideoUrl}: {setVideoUrl: any}) {
         const message: MessageType = JSON.parse(event.data);
         switch (message.type) {
           case "get-songs":
-            if (message.songs) setSongs(message.songs);
+            if (message.songs) {
+              setSongs(message.songs);
+            }
             break;
           case "add-music":
             if (message.music && message.details) {
-              setSongs((prevSongs:any) => [{youtubeUrl: message.details?.title, votes: message.music?.votes, money: message.music?.money}, ...prevSongs]);
               setArtist(message.details.artist);
-              setVideoUrl(convertToEmbedURL(message.music.youtubeUrl));
+              // Only update video URL if no song is currently playing
+              if (message.shouldUpdateVideo) {
+                setVideoUrl(convertToEmbedURL(message.music.youtubeUrl));
+                // Start the song automatically if it's the first one
+                startSong(message.music, roomCode);
+              }
+              // Only call getSongs if we have roomCode
+              if (roomCode) {
+                getSongs();
+              }
             }
+            break;
+          case "song-started":
+            if (message.music) {
+              setVideoUrl(convertToEmbedURL(message.music.youtubeUrl));
+              setArtist(message.music.artist || "");
+              setCurrentlyPlayingSong(message.music);
+            }
+            break;
+          case "next-song":
+            if (message.music) {
+              setVideoUrl(convertToEmbedURL(message.music.youtubeUrl));
+              setArtist(message.music.artist || "");
+              setCurrentlyPlayingSong(message.music);
+              // Refresh the queue to show updated order
+              if (roomCode) {
+                getSongs();
+              }
+            }
+            break;
+          case "queue-empty":
+            setVideoUrl("");
+            setArtist("");
+            setCurrentlyPlayingSong(null);
             break;
           case "delete-music":
             if (message.music) setSongs((prev) => prev.filter((s) => s.youtubeUrl !== message.music?.youtubeUrl));
             break;
           case "remove-music":
             if (message.music) setSongs((prev) => prev.filter((s) => s.youtubeUrl !== message.music?.youtubeUrl));
+            break;
+          case "vote-updated":
+            if (message.music) {
+              // Refresh the songs list to get updated vote counts
+              if (roomCode) {
+                getSongs();
+              }
+            }
             break;
         }
       });
@@ -58,11 +100,10 @@ export default function Queue({setVideoUrl}: {setVideoUrl: any}) {
         socket.onmessage = null;
       }
     };
-  }, [socket]);
+  }, [socket, roomCode]);
 
   function addSong(url: string, money: number, roomCode: string) {
     if (socket && socket.readyState === WebSocket.OPEN) {
-      console.log(roomCode)
       socket?.send(
         JSON.stringify({
           type: "add-music",
@@ -74,17 +115,44 @@ export default function Queue({setVideoUrl}: {setVideoUrl: any}) {
     }
   }
 
-  function getSongs() {
+  function startSong(song: SongType, roomCode: string) {
     if (socket && socket.readyState === WebSocket.OPEN) {
+      socket?.send(
+        JSON.stringify({
+          type: "start-song",
+          roomCode: roomCode,
+          music: song,
+        })
+      );
+    }
+  }
+
+  function endCurrentSong(roomCode: string) {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket?.send(
+        JSON.stringify({
+          type: "end-song",
+          roomCode: roomCode,
+        })
+      );
+    }
+  }
+
+  function getSongs() {
+    if (socket && socket.readyState === WebSocket.OPEN && roomCode) {
       socket?.send(
         JSON.stringify({ type: "get-songs", admin: "admin", roomCode: roomCode })
       );
     }
   }
 
-  useEffect(() => {
-    getSongs();
-  }, []);
+  function removeSong(song: SongType, roomCode: string) {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket?.send(
+        JSON.stringify({ type: "remove-song", music: song, roomCode: roomCode })
+      );
+    }
+  }
 
   useEffect(() => {
     const roomCode = searchParams.get("room_code");
@@ -92,7 +160,14 @@ export default function Queue({setVideoUrl}: {setVideoUrl: any}) {
     if (roomCode) {
       setRoomCode(roomCode);
     }
-  }, [])
+  }, [searchParams])
+
+  // Call getSongs when roomCode is set
+  useEffect(() => {
+    if (roomCode && socket) {
+      getSongs();
+    }
+  }, [roomCode, socket]);
 
   return (
     <div className="w-1/3 flex flex-col justify-between bg-black p-6 rounded-b-lg rounded-tl-lg shadow-lg">
@@ -101,8 +176,8 @@ export default function Queue({setVideoUrl}: {setVideoUrl: any}) {
         <div className="overflow-y-auto max-h-[34rem] pr-2">
           <div className="space-y-4">
             {Array.isArray(songs) && songs.length > 0 ? 
-            songs.map((song, idx) => (
-              <Song key={idx} song={song} artist={artist} />
+            songs.map((song) => (
+              <Song key={song.youtubeUrl} song={song} artist={song.artist || artist} removeSong={removeSong} roomCode={roomCode} />
             )) : 
             <div className="text-center mt-[17rem] mr-10 text-gray-400 text-lg">Add songs</div>}
           </div>

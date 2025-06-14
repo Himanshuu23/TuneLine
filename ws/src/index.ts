@@ -12,7 +12,12 @@ type dataType = {
 type musicType = {
   youtubeUrl: string,
   money: number,
-  votes: number
+  votes: number,
+  title?: string,
+  artist?: string,
+  thumbnail?: string,
+  votedBy?: string[] // Array of user emails who voted
+  addedAt?: number // Timestamp for tie-breaking
 };
 
 type RateLimitingType = {
@@ -25,6 +30,7 @@ type WebSocketWithRoomCode = WebSocket & { roomCode?: string, id: string };
 
 let USERS: RateLimitingType[] = [];
 let ACTIVE_SOCKETS = new Map<string, WebSocketWithRoomCode>();
+let CURRENTLY_PLAYING = new Map<string, any>(); // Track currently playing song per room
 
 const PORT = process.env.PORT || 11011;
 
@@ -67,13 +73,17 @@ function rateLimitByIp(ip: string): boolean { // We'll do this using nginx only 
 async function makeNewRoom(details: any, socket: WebSocketWithRoomCode) {
     let code = Math.random().toString(36).substring(2, 8);
 
-    await client.hmset(`${code}`, { user: details.name, createdAt: Date.now() });
+    await client.hmset(`${code}`, { 
+        user: details.name, 
+        createdAt: Date.now(),
+        streamUrl: details.streamUrl || "" // Store stream URL
+    });
     await client.hmset(`${code}:sockets`, { socketId: socket.id })
     await client.rpush('tuneline:creators', JSON.stringify({ creator: details.name, channelProfile: details.profilePic }));
     
     ACTIVE_SOCKETS.set(socket.id, socket);
 
-    return JSON.stringify({ roomCode: code, message: "Room Created!", videoUrl: details.videoUrl });
+    return JSON.stringify({ roomCode: code, message: "Room Created!", videoUrl: details.videoUrl, streamUrl: details.streamUrl });
 }
 
 async function joinRoom(roomCode: string, username: string, socket: WebSocketWithRoomCode) {
@@ -102,9 +112,22 @@ function songAlreadyExists(songs: any, music: musicType) {
 
 async function insertMusicIntoQueue(roomCode: string, music: musicType): Promise<any> {
     const response:any = await fetchVideoDetails(music.youtubeUrl);
-    const score = music.money * 1e6 + music.votes
+    
+    // Priority algorithm: money * 1e6 + votes
+    // This ensures money has higher priority than votes
+    const score = music.money * 1e6 + music.votes;
 
-    await client.zadd(`${roomCode}:queue`, score, JSON.stringify(music))
+    // Create complete song data with video details
+    const completeSong = {
+        ...music,
+        title: response?.title || 'Unknown Title',
+        artist: response?.artist || 'Unknown Artist',
+        thumbnail: response?.thumbnail || '',
+        votedBy: music.votedBy || [], // Initialize empty array if not provided
+        addedAt: Date.now() // Add timestamp for tie-breaking
+    };
+
+    await client.zadd(`${roomCode}:queue`, score, JSON.stringify(completeSong))
     return response
 }
 
@@ -115,22 +138,28 @@ async function getHighestPrioritySong(roomCode: string) {
 }
 
 async function removeSong(roomCode: string, music: musicType) {
-    const result = await client.zrange(`${roomCode}:queue`, 0, 0)
+    const result = await client.zrange(`${roomCode}:queue`, 0, -1)
     const parsedSongs = result.map((song) => JSON.parse(song))
     
-    if (parsedSongs.length > 0 && !songAlreadyExists(parsedSongs, music)) {
-        return JSON.stringify({ message: "song is not even in the queue" })
+    // Find the specific song to remove
+    const songToRemove = parsedSongs.find((song: any) => song.youtubeUrl === music.youtubeUrl)
+    
+    if (!songToRemove) {
+        return JSON.stringify({ message: "song is not in the queue" })
     }
 
-    await client.zrem(`${roomCode}:queue`, result[0])
+    // Remove the specific song by its score and value
+    const score = songToRemove.money * 1e6 + songToRemove.votes
+    await client.zrem(`${roomCode}:queue`, JSON.stringify(songToRemove))
+    
     return JSON.stringify({ message: "song removed!" })
 }
 
 async function getSongs(roomCode: string) {
-    const songs = await client.zrevrange(`${roomCode}:queue`, 0, -1, "WITHSCORES");
+    const songs = await client.zrevrange(`${roomCode}:queue`, 0, -1);
     const parsedSongs = songs.map((song) => JSON.parse(song))
 
-    return JSON.stringify({ response: parsedSongs })
+    return parsedSongs;
 }
 
 async function getCreators() { // also store channel name maybe and also their channel pfp to show in the search bar would look amazing
@@ -184,6 +213,9 @@ wss.on("connection", (socket: WebSocket, request) => {
 //   console.log("new connection from: ", request.socket.remoteAddress) -> for nginx testing
   socket.on("error", console.error);
 
+  // Generate a unique ID for the socket
+  (socket as WebSocketWithRoomCode).id = Math.random().toString(36).substring(2, 15);
+
   const ip = request.socket.remoteAddress?.replace(/^::ffff:/, '') || "";
   const dontLetHimGo = rateLimitByIp(ip);
 
@@ -192,13 +224,13 @@ wss.on("connection", (socket: WebSocket, request) => {
   } else {
     socket.on("message", async (data) => {
         const message = JSON.parse(data.toString());
-        let admin: string, roomCode: string, username: string, response: string | musicType[], music: musicType, creators: string[], details: any;
+        let roomCode: string, username: string, response: string | musicType[], music: musicType, creators: string[], details: any, roomDetails: any;
         switch(message.type) {
             case "make-room":
                 details = message.details;
-                roomCode = await makeNewRoom(details, socket as WebSocketWithRoomCode);
-                response = await joinRoom(roomCode, details.name, socket as WebSocketWithRoomCode);
-                socket.send(JSON.stringify({ type:"make-room", message: "created-room", roomCode: roomCode, response: response }));
+                roomDetails = JSON.parse(await makeNewRoom(details, socket as WebSocketWithRoomCode));
+                response = await joinRoom(roomDetails.roomCode, details.name, socket as WebSocketWithRoomCode);
+                socket.send(JSON.stringify({ type:"make-room", message: "created-room", roomCode: roomDetails.roomCode, response: response }));
                 break;
             case "join-room":
                 roomCode = message.roomCode;
@@ -207,7 +239,12 @@ wss.on("connection", (socket: WebSocket, request) => {
                 socket.send(JSON.stringify({ type:"join-room", message: response, roomCode: roomCode }));
                 wss.clients.forEach((client) => {
                     if ((client as WebSocketWithRoomCode).roomCode === roomCode && client !== socket) {
-                        (client as WebSocketWithRoomCode).send(JSON.stringify({ type:"join-room", message: response }));
+                        (client as WebSocketWithRoomCode).send(JSON.stringify({ 
+                            type:"join-room", 
+                            message: response, 
+                            roomCode: roomCode,
+                            username: username 
+                        }));
                     }
                 });
                 break;
@@ -216,21 +253,37 @@ wss.on("connection", (socket: WebSocket, request) => {
                 music = message.music;
                 roomCode = message.roomCode;
                 const result = await insertMusicIntoQueue(roomCode, music);
-                // console.log(result)
                 await new Promise(resolve => setTimeout(resolve, 0.000001));
-                socket.send(JSON.stringify({ type: "add-music", message: `${username} added the song result.title into the queue! vote it to play`, music: music, details: result }));
-                break;
-            case "delete-music":
-                music = message.music;
-                roomCode = message.roomCode;
-                response = await removeSong(roomCode, music);
-                socket.send(JSON.stringify({ type: "delete-music", message: response, music: music }));
+                
+                // Check if there's currently a song playing
+                const currentlyPlaying = CURRENTLY_PLAYING.get(roomCode);
+                const shouldUpdateVideo = !currentlyPlaying; // Only update if no song is playing
+                
+                wss.clients.forEach((client) => {
+                    if ((client as WebSocketWithRoomCode).roomCode === roomCode) {
+                        (client as WebSocketWithRoomCode).send(JSON.stringify({ 
+                            type: "add-music", 
+                            message: `${username} added the song ${result?.title || 'Unknown'} into the queue! vote it to play`, 
+                            music: music, 
+                            details: result,
+                            shouldUpdateVideo: shouldUpdateVideo, // Tell frontend whether to update video
+                            username: username // Include username for chat notifications
+                        }));
+                    }
+                });
                 break;
             case "remove-song":
                 music = message.music;
                 roomCode = message.roomCode;
                 response = await removeSong(roomCode, music) || "this is the response";
                 socket.send(JSON.stringify({ type: "remove-song", message: response, music: music }));
+                
+                // Broadcast the removal to all clients in the room
+                wss.clients.forEach((client) => {
+                    if ((client as WebSocketWithRoomCode).roomCode === roomCode) {
+                        (client as WebSocketWithRoomCode).send(JSON.stringify({ type: "delete-music", music: music }));
+                    }
+                });
                 break;
             case "close-room":
                 roomCode = message.roomCode;
@@ -250,6 +303,147 @@ wss.on("connection", (socket: WebSocket, request) => {
                 roomCode = message.roomCode;
                 response = await getHighestPrioritySong(roomCode);
                 socket.send(JSON.stringify({ response: response }))
+                break;
+            case "get-room-details":
+                roomCode = message.roomCode;
+                const roomInfo = await client.hgetall(`${roomCode}`);
+                const creatorDetails = await client.lrange('tuneline:creators', 0, -1);
+                const parsedCreators = creatorDetails.map((creator) => JSON.parse(creator));
+                const roomCreator = parsedCreators.find((creator: any) => creator.creator === roomInfo.user);
+                
+                socket.send(JSON.stringify({ 
+                    type: "room-details", 
+                    details: {
+                        creator: roomInfo.user || "Unknown",
+                        channelProfile: roomCreator?.channelProfile || "/test.jpg",
+                        streamUrl: roomInfo.streamUrl || ""
+                    }
+                }));
+                break;
+            case "start-song":
+                roomCode = message.roomCode;
+                const songToStart = message.music;
+                CURRENTLY_PLAYING.set(roomCode, songToStart);
+                
+                // Broadcast to all clients that a song has started
+                wss.clients.forEach((client) => {
+                    if ((client as WebSocketWithRoomCode).roomCode === roomCode) {
+                        (client as WebSocketWithRoomCode).send(JSON.stringify({ 
+                            type: "song-started", 
+                            music: songToStart 
+                        }));
+                    }
+                });
+                break;
+            case "end-song":
+                roomCode = message.roomCode;
+                CURRENTLY_PLAYING.delete(roomCode);
+                
+                // Get the next highest priority song
+                const nextSong = await getHighestPrioritySong(roomCode);
+                
+                if (nextSong) {
+                    // Remove the song from queue and start it
+                    await client.zrem(`${roomCode}:queue`, JSON.stringify(nextSong));
+                    CURRENTLY_PLAYING.set(roomCode, nextSong);
+                    
+                    // Broadcast the next song to all clients
+                    wss.clients.forEach((client) => {
+                        if ((client as WebSocketWithRoomCode).roomCode === roomCode) {
+                            (client as WebSocketWithRoomCode).send(JSON.stringify({ 
+                                type: "next-song", 
+                                music: nextSong 
+                            }));
+                        }
+                    });
+                } else {
+                    // No more songs in queue
+                    wss.clients.forEach((client) => {
+                        if ((client as WebSocketWithRoomCode).roomCode === roomCode) {
+                            (client as WebSocketWithRoomCode).send(JSON.stringify({ 
+                                type: "queue-empty"
+                            }));
+                        }
+                    });
+                }
+                break;
+            case "vote-song":
+                roomCode = message.roomCode;
+                const songUrl = message.url;
+                const admin = message.admin;
+                
+                // Get all songs and find the one to vote for
+                const allSongs = await client.zrange(`${roomCode}:queue`, 0, -1);
+                const parsedAllSongs = allSongs.map((song) => JSON.parse(song));
+                const songToVote = parsedAllSongs.find((song: any) => song.youtubeUrl === songUrl);
+                
+                if (songToVote) {
+                    // Remove the old song
+                    await client.zrem(`${roomCode}:queue`, JSON.stringify(songToVote));
+                    
+                    // Initialize votedBy array if it doesn't exist
+                    if (!songToVote.votedBy) {
+                        songToVote.votedBy = [];
+                    }
+                    
+                    const userHasVoted = songToVote.votedBy.includes(admin);
+                    
+                    if (userHasVoted) {
+                        // User has already voted, so unvote
+                        songToVote.votedBy = songToVote.votedBy.filter((email: string) => email !== admin);
+                        songToVote.votes -= 1;
+                    } else {
+                        // User hasn't voted, so vote
+                        songToVote.votedBy.push(admin);
+                        songToVote.votes += 1;
+                    }
+                    
+                    // Ensure votes don't go below 0
+                    if (songToVote.votes < 0) {
+                        songToVote.votes = 0;
+                    }
+                    
+                    // Use the same priority algorithm: money * 1e6 + votes
+                    const newScore = songToVote.money * 1e6 + songToVote.votes;
+                    await client.zadd(`${roomCode}:queue`, newScore, JSON.stringify(songToVote));
+                    
+                    // Broadcast the updated song to all clients
+                    wss.clients.forEach((client) => {
+                        if ((client as WebSocketWithRoomCode).roomCode === roomCode) {
+                            (client as WebSocketWithRoomCode).send(JSON.stringify({ 
+                                type: "vote-updated", 
+                                music: songToVote,
+                                action: userHasVoted ? "unvoted" : "voted"
+                            }));
+                        }
+                    });
+                }
+                break;
+            case "queue-empty":
+                wss.clients.forEach((client) => {
+                    if ((client as WebSocketWithRoomCode).roomCode === roomCode) {
+                        (client as WebSocketWithRoomCode).send(JSON.stringify({ 
+                            type: "queue-empty"
+                        }));
+                    }
+                });
+                break;
+            case "chat-message":
+                const chatUsername = message.username;
+                const chatMessage = message.message;
+                roomCode = message.roomCode;
+                
+                // Broadcast chat message to all clients in the room
+                wss.clients.forEach((client) => {
+                    if ((client as WebSocketWithRoomCode).roomCode === roomCode) {
+                        (client as WebSocketWithRoomCode).send(JSON.stringify({ 
+                            type: "chat-message",
+                            username: chatUsername,
+                            message: chatMessage
+                        }));
+                    }
+                });
+                break;
         }
     });
   }

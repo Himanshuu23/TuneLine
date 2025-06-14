@@ -27,25 +27,25 @@ export default function Join() {
     }
   }
 
+  const handleMessage = (event: MessageEvent) => {
+  const message = JSON.parse(event.data);
+    if (message.type === "join-room") {
+      router.push(`/room?room_code=${message.roomCode}`);
+    }
+  };
+
   useEffect(() => {
     if (!socket) {
       return
     }
 
       if(socket) {
-        socket.addEventListener("message", (event) => {
-          const message = JSON.parse(event.data);
-          switch(message.type) {
-            case "join-room":
-              router.push(`/room?room_code=${message.roomCode}`);
-              break;
-          }
-        })
+        socket.addEventListener("message", handleMessage)
       }
   
       return () => {
         if(socket) {
-          socket.onmessage = null;
+          socket.removeEventListener("message", handleMessage);
         }
       }
     }, [socket])

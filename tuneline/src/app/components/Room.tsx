@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import useSocket from "../hooks";
 import Queue from "./Queue";
+import Chat from "./Chat";
 import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
@@ -13,32 +14,22 @@ export default function RoomContainer() {
   const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
   const [isViewOpen, setIsViewOpen] = useState<boolean>(false);
   const [viewOption, setViewOption] = useState<number>(1);
-  const [channelName, setChannelName] = useState<string>("");
+  const [channelName, setChannelName] = useState<string>("Test Channel");
   const [channelProfile, setChannelProfile] = useState<string>("/test.jpg");
   const [videoUrl, setVideoUrl] = useState<string>("");
+  const [streamUrl, setStreamUrl] = useState<string>("");
 
   const { data: session, status } = useSession();
   const socket = useSocket();
   const searchParams = useSearchParams();
 
-  const fetchChannelDetails = async () => {  // FETCH THESE FROM THE ROUTE FOR /CREATORS USING THE CHANNEL NAME  
-    if (!session?.accessToken) return;
-  
-    const res = await fetch(
-      "https://www.googleapis.com/youtube/v3/channels?part=id,snippet&mine=true",
-      {
-        headers: {
-          Authorization: `Bearer ${session.accessToken}`,
-          Accept: "application/json",
-        },
-      }
-    );
-  
-    const data = await res.json();
-    if (data.items?.length) {
-      const channel = data.items[0].snippet;
-      setChannelName(channel.title);
-      setChannelProfile(channel.thumbnails.default.url);
+  // Fetch room details to get channel information
+  const fetchRoomDetails = async (roomCode: string) => {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ 
+        type: "get-room-details", 
+        roomCode: roomCode 
+      }));
     }
   };
 
@@ -54,6 +45,14 @@ export default function RoomContainer() {
           case "close-room":
             setRoomCode("");
             window.location.href = "/";
+            break;
+          case "room-details":
+            if (message.details) {
+              setChannelName(message.details.creator || "Unknown Channel");
+              setChannelProfile(message.details.channelProfile || "/test.jpg");
+              setStreamUrl(message.details.streamUrl || "");
+            }
+            break;
         }
       });
     }
@@ -89,16 +88,18 @@ export default function RoomContainer() {
     const roomCode = searchParams.get("room_code");
     
     if (roomCode) {
-      setRoomCode(roomCode)
+      setRoomCode(roomCode);
+      // Fetch room details to get channel information
+      fetchRoomDetails(roomCode);
     }
-  }, [])
+  }, [searchParams])
 
   useEffect(() => {
     if (session?.accessToken) {
       const value = document.cookie.split('; ').find(row => row.startsWith("steam" + '='))?.split('=')[1];
       document.cookie = `${name}=; path=/; max-age=0`;
       value && setVideoUrl(decodeURIComponent(value))
-      fetchChannelDetails();
+      fetchRoomDetails(roomCode);
     }
   }, [session?.accessToken]);  
 
@@ -133,7 +134,21 @@ export default function RoomContainer() {
               } h-full flex justify-center items-center`}
             >
               <div className="w-full h-full bg-gray-700 rounded-lg overflow-hidden">
-                <video src="/" className="w-full h-full object-cover" controls />
+                {streamUrl ? (
+                  <iframe 
+                    src={streamUrl}
+                    className="w-full h-full object-cover" 
+                    allowFullScreen
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-gray-400">
+                    <div className="text-center">
+                      <div className="text-4xl mb-2">📺</div>
+                      <p>No stream available</p>
+                      <p className="text-sm">Streamer hasn't set a live stream URL</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -212,40 +227,11 @@ export default function RoomContainer() {
         </div>
       </div>
       {isChatOpen ? (
-        <div className="flex flex-col h-full w-1/3 bg-[#202020] shadow-lg p-6">
-          <div className="flex justify-between items-center text-white mb-4">
-            <span className="text-lg font-semibold">Chat</span>
-            <button
-              className="w-8 h-8 flex justify-center items-center bg-red-500 rounded-full"
-              onClick={() => setIsChatOpen(false)}
-            >
-              <svg
-                className="w-5 h-5 text-white"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          </div>
-          <div className="flex-1 overflow-y-auto bg-gray-800 rounded-lg p-4">
-            <div className="text-white">Chat content here...</div>
-          </div>
-          <div className="mt-4">
-            <input
-              type="text"
-              placeholder="Type a message..."
-              className="w-full p-3 rounded-lg bg-gray-700 text-white focus:outline-none"
-            />
-          </div>
-        </div>
+        <Chat 
+          roomCode={roomCode} 
+          isOpen={isChatOpen} 
+          onClose={() => setIsChatOpen(false)} 
+        />
       ) : (
         <Queue setVideoUrl={setVideoUrl} />
       )}

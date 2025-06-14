@@ -15,7 +15,7 @@ import { useEffect, useState } from "react";
 import { z } from "zod";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation"; // Fixed the import to match Next.js 13+ router API
+import { useRouter } from "next/navigation"; 
 
 const socialMediaSchema = z.object({
   url: z
@@ -36,6 +36,7 @@ const socialMediaSchema = z.object({
 export default function Create() {
   const { data: session } = useSession();
   const [ytUrl, setYtUrl] = useState<string>(""); // url of the stream which would be played in the room later
+  const [streamUrl, setStreamUrl] = useState<string>(""); // url of the streamer's live stream
   const [channelName, setChannelName] = useState<string>("");
   const [channelProfile, setChannelProfile] = useState<string>("/test.jpg");
 
@@ -48,11 +49,12 @@ export default function Create() {
     formState: { errors },
   } = useForm<{
     url: string;
+    streamUrl: string;
   }>({
     resolver: zodResolver(socialMediaSchema),
   });
 
-  const onSubmit: SubmitHandler<{ url: string }> = (data) => {
+  const onSubmit: SubmitHandler<{ url: string; streamUrl: string }> = (data) => {
     createRoom(session?.user?.email || "");
   };  
 
@@ -80,7 +82,15 @@ export default function Create() {
   function createRoom(email: string) {
     if (socket && socket.readyState === WebSocket.OPEN) {
       socket.send(
-        JSON.stringify({ type: "make-room", details: { name: channelName, profilePic: channelProfile, videoUrl: ytUrl } })
+        JSON.stringify({ 
+          type: "make-room", 
+          details: { 
+            name: channelName, 
+            profilePic: channelProfile, 
+            videoUrl: ytUrl,
+            streamUrl: streamUrl 
+          } 
+        })
       );
     } else {
       console.error("WebSocket is NOT Open!");
@@ -107,18 +117,19 @@ export default function Create() {
 
   return (
     <Dialog>
-      <DialogTrigger className="px-4 text-sm font-medium text-white bg-black rounded-full hover:bg-gray-900">
+      <DialogTrigger className="px-4 text-sm font-medium text-white bg-gray-900 rounded-full hover:bg-gray-800">
         Create
       </DialogTrigger>
       <DialogContent className="bg-black flex flex-col gap-4 p-6">
         <DialogHeader>
           <DialogTitle className="text-3xl text-white">Create Room</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="flex gap-10 my-2 mr-10">
-          <div className="w-5/6">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4 my-2 mr-10">
+          <div className="w-full">
+            <label className="text-white text-sm mb-2 block">Channel Link</label>
             <Input
               {...register("url")}
-              className="mt-2 placeholder:text-gray-200 rounded-full w-full border-gray-300 focus:border-2 focus:border-gray-300 focus:outline-none"
+              className="placeholder:text-gray-200 rounded-full w-full border-gray-300 focus:border-2 focus:border-gray-300 focus:outline-none"
               type="text"
               value={ytUrl}
               onChange={(e) => setYtUrl(e.target.value)}
@@ -128,8 +139,24 @@ export default function Create() {
               <p className="text-sm text-red-500 m-2">{errors.url?.message as string}</p>
             )}
           </div>
-          <Button variant="secondary" type="submit" className="w-1/6 mt-2 rounded-full">
-            Submit
+          
+          <div className="w-full">
+            <label className="text-white text-sm mb-2 block">Stream Link (Optional)</label>
+            <Input
+              {...register("streamUrl")}
+              className="placeholder:text-gray-200 rounded-full w-full border-gray-300 focus:border-2 focus:border-gray-300 focus:outline-none"
+              type="text"
+              value={streamUrl}
+              onChange={(e) => setStreamUrl(e.target.value)}
+              placeholder="Enter Live Stream URL (YouTube/Twitch)"
+            />
+            {errors.streamUrl && (
+              <p className="text-sm text-red-500 m-2">{errors.streamUrl?.message as string}</p>
+            )}
+          </div>
+          
+          <Button variant="secondary" type="submit" className="w-full mt-2 rounded-full">
+            Create Room
           </Button>
         </form>
       </DialogContent>
