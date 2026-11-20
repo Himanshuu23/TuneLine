@@ -14,8 +14,10 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Set environment variables for build
-ENV NEXT_TELEMETRY_DISABLED 1
+# NEXT_PUBLIC_* values are inlined at build time, so they must be present here.
+ARG NEXT_PUBLIC_WS_URL=ws://localhost/ws
+ENV NEXT_PUBLIC_WS_URL=$NEXT_PUBLIC_WS_URL
+ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN npm run build
 

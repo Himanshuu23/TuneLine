@@ -55,15 +55,25 @@ tuneline/
 
 ### Environment Variables
 
-Create a `.env` file in the root directory:
+Secrets are never committed. Copy the examples and fill in real values locally:
+
+- **Docker Compose** reads `.env` in the repo root (`cp .env.example .env`).
+- **`npm run dev`** reads `client/.env.local` (`cp client/.env.example client/.env.local`). Next.js does not load the root `.env`.
 
 ```env
 YOUTUBE_API_KEY=your_youtube_api_key
-NEXTAUTH_SECRET=your_nextauth_secret
+NEXT_PUBLIC_WS_URL=ws://localhost/ws
 NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=your_nextauth_secret
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
+GITHUB_CLIENT_ID=your_github_client_id
+GITHUB_CLIENT_SECRET=your_github_client_secret
 ```
+
+`YOUTUBE_API_KEY` is required. The server will not call YouTube without it.
+
+Generate `NEXTAUTH_SECRET` with `openssl rand -base64 32`.
 
 ### Running the Application
 

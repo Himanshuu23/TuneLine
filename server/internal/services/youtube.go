@@ -16,7 +16,7 @@ func FetchVideoDetails(url string) (map[string]string, error) {
 
 	apiKey := os.Getenv("YOUTUBE_API_KEY")
 	if apiKey == "" {
-		apiKey = "AIzaSyA8TG3tJ3hcgrD6u8iuD0bY3kcOBwYCHk4" // Fallback
+		return nil, fmt.Errorf("YOUTUBE_API_KEY is not set")
 	}
 
 	reqURL := fmt.Sprintf("https://www.googleapis.com/youtube/v3/videos?part=snippet&id=%s&key=%s", videoID, apiKey)
