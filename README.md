@@ -4,14 +4,14 @@ A real-time music queue platform for content creators where viewers can queue so
 
 ## Features
 
-- 🎵 **Real-time Music Queue**: Users can add YouTube songs to a queue
-- 💰 **Payment Priority**: Pay to push songs higher in the queue (strongest priority)
-- 👍 **Voting System**: Users can vote to push songs up in the queue
-- 💬 **Live Chat**: Real-time chat functionality in rooms
-- 📺 **YouTube Integration**: Fetches video details, thumbnails, and metadata
-- 🎨 **Smooth Animations**: Queue items animate when moving up/down
-- ⚡ **Scalable Architecture**: Redis pub/sub for horizontal scaling
-- 🔄 **Load Balancing**: Nginx load balancer for WebSocket servers
+- **Real-time Music Queue**: Users can add YouTube songs to a queue
+- **Payment Priority**: Pay to push songs higher in the queue (strongest priority)
+- **Voting System**: Users can vote to push songs up in the queue
+- **Live Chat**: Real-time chat functionality in rooms
+- **YouTube Integration**: Fetches video details, thumbnails, and metadata
+- **Smooth Animations**: Queue items animate when moving up/down
+- **Scalable Architecture**: Redis pub/sub for horizontal scaling
+- **Load Balancing**: Nginx load balancer for WebSocket servers
 
 ## Architecture
 
