@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { signIn, signOut, useSession } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import {
   Dialog,
   DialogContent,
@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import GoogleLogo from "../logos/Google";
 import GithubLogo from "../logos/Github";
+import Profile from "./Profile";
 
 const modalPanel =
   "block bg-black border border-white/25 rounded-2xl sm:rounded-2xl p-8 w-[90vw] sm:w-[420px] shadow-2xl";
@@ -52,16 +53,7 @@ export default function Login() {
   };
 
   if (session) {
-    return (
-      <div>
-        <button
-          className="px-3 py-2 text-sm mb-2 font-medium text-white bg-black rounded-full hover:bg-gray-900"
-          onClick={() => signOut()}
-        >
-          Logout
-        </button>
-      </div>
-    );
+    return <Profile />;
   }
 
   return (
