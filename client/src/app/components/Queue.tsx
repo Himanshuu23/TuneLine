@@ -27,6 +27,26 @@ export default function Queue({setVideoUrl}: {setVideoUrl: (url: string) => void
     return match ? `https://www.youtube.com/embed/${match[1]}?autoplay=1` : "";
   };
 
+  const startSong = useCallback((song: SongType, roomCode: string) => {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket?.send(
+        JSON.stringify({
+          type: "start-song",
+          roomCode: roomCode,
+          music: song,
+        })
+      );
+    }
+  }, [socket]);
+
+  const getSongs = useCallback(() => {
+    if (socket && socket.readyState === WebSocket.OPEN && roomCode) {
+      socket?.send(
+        JSON.stringify({ type: "get-songs", admin: "admin", roomCode: roomCode })
+      );
+    }
+  }, [socket, roomCode]);
+
   useEffect(() => {
     if (!socket || !roomCode) {
       return
@@ -118,27 +138,6 @@ export default function Queue({setVideoUrl}: {setVideoUrl: (url: string) => void
       );
     }
   }
-
-  const startSong = useCallback((song: SongType, roomCode: string) => {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket?.send(
-        JSON.stringify({
-          type: "start-song",
-          roomCode: roomCode,
-          music: song,
-        })
-      );
-    }
-  }, [socket]);
-
-
-  const getSongs = useCallback(() => {
-    if (socket && socket.readyState === WebSocket.OPEN && roomCode) {
-      socket?.send(
-        JSON.stringify({ type: "get-songs", admin: "admin", roomCode: roomCode })
-      );
-    }
-  }, [socket, roomCode]);
 
   function removeSong(song: SongType, roomCode: string) {
     if (socket && socket.readyState === WebSocket.OPEN) {

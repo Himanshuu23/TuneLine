@@ -28,7 +28,7 @@ export default function Pay({ addSong, url, roomCode, money }: PayProps) {
         </DialogHeader>
         <div className="flex gap-10 my-2 mr-10">
           <button onClick={() => setOpen(false)} style={{ transform: "scale(150%)" }}>Yes</button>
-          <button onClick={() => handleSong(url, roomCode, money)} style={{ transform: "scale(150%)" }}>No</button>
+          <button onClick={() => { if (url) handleSong(url, roomCode, money); }} style={{ transform: "scale(150%)" }}>No</button>
         </div>
       </DialogContent>
     </Dialog>
