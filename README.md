@@ -144,7 +144,3 @@ This ensures:
 - `queue-empty`: Queue is empty
 - `chat-message`: New chat message
 - `room-details`: Room information
-
-## License
-
-MIT
