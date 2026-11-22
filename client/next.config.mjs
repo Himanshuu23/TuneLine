@@ -2,7 +2,7 @@
 const nextConfig = {
   output: 'standalone',
   images: {
-    domains: ["yt3.ggpht.com", "i.ytimg.com"],
+    domains: ["yt3.ggpht.com", "i.ytimg.com", "source.unsplash.com"],
   },
 };
 
