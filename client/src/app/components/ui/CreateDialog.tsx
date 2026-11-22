@@ -95,7 +95,7 @@ export default function Create() {
 
   return (
     <Dialog>
-      <DialogTrigger className="px-4 text-sm font-medium text-white bg-gray-900 rounded-full hover:bg-gray-800">
+      <DialogTrigger className="px-6 text-sm font-medium text-white bg-[#1e9b5b] rounded-full opacity-80 hover:opacity-100 transition-opacity">
         Create
       </DialogTrigger>
       <DialogContent className="bg-black flex flex-col gap-4 p-6">
