@@ -67,58 +67,58 @@ export default function Navbar() {
   }, [input, creators]);
 
   return (
-      <div className="flex mr-3 py-4 px-6 fixed top-0 left-0 right-0 z-50 h-16 justify-between backdrop-blur-md">
+    <div className="flex mr-3 py-5 px-8 fixed top-0 left-0 right-0 z-50 h-20 justify-between items-center backdrop-blur-md">
       <div className="flex items-center gap-3 select-none">
-      <p className="text-white text-3xl font-semibold">🎶</p>
-      <span className="text-white text-xl font-semibold">TuneLine</span>
+        <p className="text-white text-4xl font-semibold">🎶</p>
+        <span className="text-white text-2xl font-semibold">TuneLine</span>
       </div>
-      <div className="flex justify-between gap-6 relative">
-      <Input
-      className="placeholder:text-gray-200 rounded-full border-2 border-gray-300 focus:border focus:border-gray-300 focus:outline-none"
-      type="text"
-      value={input}
-      onChange={(e) => setInput(e.target.value)}
-      placeholder="Find your fav creator"
-      />
-      {input && (
+      <div className="flex justify-between items-center gap-6 relative">
+        <Input
+          className="h-11 w-64 px-5 text-base placeholder:text-gray-200 rounded-full border-2 border-gray-300 focus:border focus:border-gray-300 focus:outline-none"
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Find your fav creator"
+        />
+        {input && (
           <div className="absolute top-12 left-0 bg-black w-1/2 rounded-md shadow-lg max-h-60 overflow-auto border border-gray-700">
-          {filteredCreators.length > 0 ? (
+            {filteredCreators.length > 0 ? (
               filteredCreators.map((creator, index) => (
-                  <div
+                <div
                   key={index}
                   className="px-4 py-3 hover:bg-gray-700/40 cursor-pointer flex items-center space-x-3"
-                  >
+                >
                   <div className="flex-shrink-0">
-                  {creator.channelProfile ? (
+                    {creator.channelProfile ? (
                       <Image
-                      src={creator.channelProfile}
-                      alt={creator.creator}
-                      width={32}
-                      height={32}
-                      className="rounded-full"
+                        src={creator.channelProfile}
+                        alt={creator.creator}
+                        width={32}
+                        height={32}
+                        className="rounded-full"
                       />
-                  ) : (
-                  <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center">
-                  <span className="text-gray-400 text-xs">?</span>
-                  </div>
-                  )}
+                    ) : (
+                      <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center">
+                        <span className="text-gray-400 text-xs">?</span>
+                      </div>
+                    )}
                   </div>
                   <span className="text-white text-sm">{creator.creator}</span>
-                  </div>
+                </div>
               ))
-          ) : (
-          <div className="px-4 py-3 text-gray-400 text-sm">
-          No creators found
+            ) : (
+              <div className="px-4 py-3 text-gray-400 text-sm">
+                No creators found
+              </div>
+            )}
           </div>
-          )}
-          </div>
-      )}
-      <Join />
-      <Create />
+        )}
+        <Join />
+        <Create />
       </div>
       <div>
-      <Login />
+        <Login />
       </div>
-      </div>
+    </div>
   );
 }

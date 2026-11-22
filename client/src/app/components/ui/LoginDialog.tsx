@@ -58,7 +58,7 @@ export default function Login() {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger className="px-4 h-8 text-sm font-medium text-gray-800 bg-gray-200 border border-gray-300 rounded-full hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400">
+      <DialogTrigger className="px-6 h-11 text-base font-medium text-gray-800 bg-gray-200 border border-gray-300 rounded-full hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400">
         Login
       </DialogTrigger>
       <DialogContent className={modalPanel}>

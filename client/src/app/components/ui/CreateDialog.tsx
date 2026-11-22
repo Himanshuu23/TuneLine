@@ -95,49 +95,49 @@ export default function Create() {
 
   return (
     <Dialog>
-      <DialogTrigger className="px-6 text-sm font-medium text-white bg-[#1e9b5b] rounded-full opacity-80 hover:opacity-100 transition-opacity">
-        Create
-      </DialogTrigger>
-      <DialogContent className="bg-black flex flex-col gap-4 p-6">
-        <DialogHeader>
-          <DialogTitle className="text-3xl text-white">Create Room</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4 my-2 mr-10">
-          <div className="w-full">
-            <label className="text-white text-sm mb-2 block">Channel Link</label>
-            <Input
-              {...register("url")}
-              className="placeholder:text-gray-200 rounded-full w-full border-gray-300 focus:border-2 focus:border-gray-300 focus:outline-none"
-              type="text"
-              value={ytUrl}
-              onChange={(e) => setYtUrl(e.target.value)}
-              placeholder="Enter Channel Link"
-            />
-            {errors.url && (
-              <p className="text-sm text-red-500 m-2">{errors.url?.message as string}</p>
-            )}
-          </div>
-          
-          <div className="w-full">
-            <label className="text-white text-sm mb-2 block">Stream Link (Optional)</label>
-            <Input
-              {...register("streamUrl")}
-              className="placeholder:text-gray-200 rounded-full w-full border-gray-300 focus:border-2 focus:border-gray-300 focus:outline-none"
-              type="text"
-              value={streamUrl}
-              onChange={(e) => setStreamUrl(e.target.value)}
-              placeholder="Enter Live Stream URL (YouTube/Twitch)"
-            />
-            {errors.streamUrl && (
-              <p className="text-sm text-red-500 m-2">{errors.streamUrl?.message as string}</p>
-            )}
-          </div>
-          
-          <Button variant="secondary" type="submit" className="w-full mt-2 rounded-full">
-            Create Room
-          </Button>
-        </form>
-      </DialogContent>
+    <DialogTrigger className="px-6 h-11 text-base font-medium text-white bg-[#1e9b5b] rounded-full opacity-80 hover:opacity-100 transition-opacity">
+    Create
+    </DialogTrigger>
+    <DialogContent className="bg-black flex flex-col gap-4 p-6">
+    <DialogHeader>
+    <DialogTitle className="text-3xl text-white">Create Room</DialogTitle>
+    </DialogHeader>
+    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4 my-2 mr-10">
+    <div className="w-full">
+    <label className="text-white text-sm mb-2 block">Channel Link</label>
+    <Input
+    {...register("url")}
+    className="placeholder:text-gray-200 rounded-full w-full border-gray-300 focus:border-2 focus:border-gray-300 focus:outline-none"
+    type="text"
+    value={ytUrl}
+    onChange={(e) => setYtUrl(e.target.value)}
+    placeholder="Enter Channel Link"
+    />
+    {errors.url && (
+        <p className="text-sm text-red-500 m-2">{errors.url?.message as string}</p>
+    )}
+    </div>
+
+    <div className="w-full">
+    <label className="text-white text-sm mb-2 block">Stream Link (Optional)</label>
+    <Input
+    {...register("streamUrl")}
+    className="placeholder:text-gray-200 rounded-full w-full border-gray-300 focus:border-2 focus:border-gray-300 focus:outline-none"
+    type="text"
+    value={streamUrl}
+    onChange={(e) => setStreamUrl(e.target.value)}
+    placeholder="Enter Live Stream URL (YouTube/Twitch)"
+    />
+    {errors.streamUrl && (
+        <p className="text-sm text-red-500 m-2">{errors.streamUrl?.message as string}</p>
+    )}
+    </div>
+
+    <Button variant="secondary" type="submit" className="w-full mt-2 rounded-full">
+    Create Room
+    </Button>
+    </form>
+    </DialogContent>
     </Dialog>
   );
 }

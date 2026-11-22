@@ -3,16 +3,16 @@ import Image from "next/image";
 export default function Other() {
   return (
     <div className="relative h-screen flex">
-      <div className="w-1/2 flex justify-center items-center">
+      <div className="w-[55%] flex justify-center items-center px-8">
         <Image
-          src="https://source.unsplash.com/400x400/?funny"
-          alt="Funny Random"
-          width={400}
-          height={400}
-          className="rounded-lg"
+          src="/features.png"
+          alt="TuneLine features"
+          width={1200}
+          height={1200}
+          className="rounded-lg w-full h-auto"
         />
       </div>
-      <div className="w-1/2 flex flex-col justify-center items-center text-white text-6xl font-medium max-w-xl leading-tight text-center px-12">
+      <div className="w-[45%] flex flex-col justify-center items-center text-white text-6xl font-medium max-w-xl leading-tight text-center px-12">
         <div
           aria-hidden="true"
           className="absolute inset-x-0 -top-3 -z-10 transform-gpu overflow-hidden px-36 blur-3xl"

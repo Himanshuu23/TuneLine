@@ -41,7 +41,7 @@ function classNames(...classes: (string | boolean | undefined | null)[]): string
 
 export default function Pricing() {
   return (
-    <div id='pricing' className="relative isolate h-screen bg-black px-6 py-24 sm:py-32 lg:px-8">
+    <div id='pricing' className="relative isolate min-h-screen bg-black px-6 py-24 sm:py-32 lg:px-8">
       <div aria-hidden="true" className="absolute inset-x-0 -top-3 -z-10 transform-gpu overflow-hidden px-36 blur-3xl">
         <div
           style={{
@@ -57,20 +57,20 @@ export default function Pricing() {
         </p>
       </div>
       <p className="mx-auto mt-6 max-w-2xl text-pretty text-center text-lg font-medium text-gray-400 sm:text-xl/8">
-      Choose an affordable plan that’s packed with the best features for enhancing streams, engaging viewers, and boosting fun.
+        Choose an affordable plan that’s packed with the best features for enhancing streams, engaging viewers, and boosting fun.
       </p>
-      <div className="mx-auto mt-16 grid max-w-[60rem] grid-cols-1 items-center gap-y-6 sm:mt-20 sm:gap-y-0 lg:max-w-[80rem] lg:grid-cols-3">
+      <div className="mx-auto mt-16 grid max-w-[60rem] grid-cols-1 items-center gap-y-6 sm:mt-20 sm:gap-y-0 lg:max-w-[90rem] lg:grid-cols-3">
         {tiers.map((tier, tierIdx) => (
           <div
             key={tier.id}
             className={classNames(
-              tier.featured ? 'relative bg-gray-900 shadow-2xl' : 'bg-white/60 sm:mx-8 lg:mx-0',
+              tier.featured ? 'relative bg-gray-900 shadow-2xl lg:scale-105' : 'bg-white/60 sm:mx-8 lg:mx-0',
               tier.featured
                 ? ''
                 : tierIdx === 0
                   ? 'rounded-t-3xl sm:rounded-b-none lg:rounded-bl-3xl lg:rounded-tr-none'
                   : 'sm:rounded-t-none lg:rounded-bl-none lg:rounded-tr-3xl',
-              'rounded-3xl p-8 ring-1 ring-gray-900/10 sm:p-10',
+              'rounded-3xl p-10 ring-1 ring-gray-900/10 sm:p-14',
             )}
           >
             <h3
@@ -83,21 +83,21 @@ export default function Pricing() {
               <span
                 className={classNames(
                   tier.featured ? 'text-white' : 'text-gray-900',
-                  'text-5xl font-semibold tracking-tight',
+                  'text-6xl font-semibold tracking-tight',
                 )}
               >
                 {tier.priceMonthly}
               </span>
               <span className={classNames(tier.featured ? 'text-gray-400' : 'text-gray-500', 'text-base')}>/month</span>
             </p>
-            <p className={classNames(tier.featured ? 'text-gray-300' : 'text-gray-600', 'mt-6 text-base/7')}>
+            <p className={classNames(tier.featured ? 'text-gray-300' : 'text-gray-600', 'mt-6 text-lg/8')}>
               {tier.description}
             </p>
             <ul
               role="list"
               className={classNames(
                 tier.featured ? 'text-gray-300' : 'text-gray-600',
-                'mt-8 space-y-3 text-sm/6 sm:mt-10',
+                'mt-8 space-y-3 text-base/7 sm:mt-10',
               )}
             >
               {tier.features.map((feature) => (
@@ -117,7 +117,7 @@ export default function Pricing() {
                 tier.featured
                   ? 'bg-indigo-500 text-white shadow-sm hover:bg-indigo-400 focus-visible:outline-indigo-500'
                   : 'text-indigo-600 ring-1 ring-inset ring-indigo-200 hover:ring-indigo-300 focus-visible:outline-indigo-600',
-                'mt-8 block rounded-md px-3.5 py-2.5 text-center text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 sm:mt-10',
+                'mt-8 block rounded-md px-3.5 py-3.5 text-center text-base font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 sm:mt-10',
               )}
             >
               Get started today
